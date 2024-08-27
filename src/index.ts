@@ -1,12 +1,11 @@
-import mineflayer from 'mineflayer';
-import defaultPersonas from './personas';
+import Kraftizen from './utils/Kraftizen';
 
-const options: mineflayer.BotOptions = {
-  host: 'localhost', // Change this to the ip you want.
-  port: 62228, // Change this to the port you want.
-  username: 'F.L.A.Y.E.R',
-};
+const kraftizenRoster: Kraftizen[] = [];
 
-const bot = mineflayer.createBot(options);
+const botNames = ['Hikori'];
 
-defaultPersonas.farmer(bot);
+botNames
+  .map((username) => ({ host: 'localhost', port: 62228, username }))
+  .forEach((kraftizenOpts) => {
+    kraftizenRoster.push(new Kraftizen(kraftizenOpts));
+  });
