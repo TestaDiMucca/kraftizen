@@ -39,7 +39,6 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         await behaviors.attackNearest(task.entity, 30, !task.silent);
         break;
       case Task.return:
-        bot.chat('I will return to where I came from.');
         await behaviors.toCoordinate(kraftizen.homePoint);
         break;
       case Task.visit:

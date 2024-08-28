@@ -6,11 +6,14 @@ import { KraftizenBot, Persona, Position } from './types';
 import { Movements } from 'mineflayer-pathfinder';
 import { botPosition } from './bot.utils';
 import { greet } from './actions/greet';
-import { calculateDistance3D, sleep } from './utils';
+import { calculateDistance3D, getRandomIntInclusive, sleep } from './utils';
 import BehaviorsEngine from './actions/behaviors';
-import { Task, TaskPayload } from './actions/tasks';
-import { performTask } from './actions/tasks';
-import { doPersonaTasks } from './actions/doPersonaTasks';
+import { Task, TaskPayload } from './actions/performTask';
+import { performTask } from './actions/performTask';
+import { queuePersonaTasks } from './actions/queuePersonaTasks';
+import { sendChat } from '../character/chatLines';
+
+type KraftizenState = {};
 
 export default class Kraftizen {
   /** Reference to the core bot brain */
@@ -48,6 +51,9 @@ export default class Kraftizen {
     this.setup();
   }
 
+  /**
+   * Apply all the basic listeners
+   */
   private setup = () => {
     this.bot.loadPlugins([pathfinder.pathfinder]);
     this.bot.on('spawn', () => {
@@ -70,7 +76,6 @@ export default class Kraftizen {
     this.bot.on('chat', this.handleChat);
 
     this.bot._client.on('hurt_animation', async (packet) => {
-      console.log('hurt 2');
       const entity = this.bot.entities[packet.entityId];
       if (
         entity.uuid === this.bot.entity.uuid &&
@@ -103,12 +108,26 @@ export default class Kraftizen {
   private handleChat = (username: string, message: string) => {
     if (username === this.bot.player.username) return;
 
+    const [command, target] = message
+      .split(',')
+      .map((s) => s.trim().toLowerCase());
+
+    if (
+      [this.bot.player.username.toLowerCase(), 'all', 'kraftizens'].every(
+        (s) => s !== target
+      )
+    )
+      return;
+
     this.lastCommandFrom = username;
-    switch (message) {
+    switch (command) {
       case 'obey':
         break;
       case 'hello':
-        this.greetUser(username);
+        setTimeout(
+          () => this.greetUser(username),
+          getRandomIntInclusive(100, 1000)
+        );
         break;
       case 'follow':
         this.bot.chat(`I will follow you, ${username}.`);
@@ -116,14 +135,14 @@ export default class Kraftizen {
         this.persona = Persona.follower;
         break;
       case 'guard':
-        this.bot.chat('I will eliminate all threats!');
+        sendChat(this.bot, 'guarding');
         this.setPersona(Persona.guard);
         break;
       case 'home':
         this.setHome();
         break;
       case 'relax':
-        this.bot.chat('I will do nothing now');
+        sendChat(this.bot, 'relaxing');
         this.setPersona(Persona.none);
         break;
       case 'collect':
@@ -133,14 +152,23 @@ export default class Kraftizen {
         this.setPersona(this.previousPersona);
         break;
       case 'come':
+      case 'here':
         this.taskQueue.unshift({ type: Task.come, username, oneTime: true });
         break;
       case 'hunt':
         this.taskQueue.unshift({ type: Task.hunt });
         break;
+      case 'current task':
+        this.bot.chat(`My current task is ${this.currentTask ?? 'nothing'}`);
+        break;
       case 'return':
+        sendChat(this.bot, 'returning');
         this.taskQueue.unshift({ type: Task.return });
         break;
+      default:
+        this.bot.chat(
+          `I don't understand "${command}." Read the manual, peasant`
+        );
     }
   };
 
@@ -183,7 +211,7 @@ export default class Kraftizen {
       }
 
       if (this.taskQueue.length === 0) {
-        await doPersonaTasks(this);
+        await queuePersonaTasks(this);
       }
     } catch (e) {
       console.error('Error while looping', e);

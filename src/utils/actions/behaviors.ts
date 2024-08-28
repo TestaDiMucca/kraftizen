@@ -127,7 +127,9 @@ export default class BehaviorsEngine {
     }
   };
 
+  /** Get nearby items */
   public getItems = async (onItem: (entity: Entity) => void) => {
+    // TODO: someday communicate across kraftizens if they marked an item to collect
     const drops = Object.values(this.bot.entities)
       .filter((entity) => entity.name === 'item')
       .filter(
@@ -181,6 +183,7 @@ export default class BehaviorsEngine {
   };
 
   private attack = (mob: Entity) => {
+    this.bot.lookAt(mob.position);
     this.bot.attack(mob);
   };
 
@@ -189,6 +192,7 @@ export default class BehaviorsEngine {
 
     if (!player) {
       this.bot.chat('I have nobody to follow.');
+      return;
     }
 
     this.bot.chat(`I will follow ${username}`);
