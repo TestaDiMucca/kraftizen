@@ -22,3 +22,6 @@ export const calculateDistance3D = (
 };
 
 export const posString = ({ x, y, z }: Position) => `${x},${y},${z}`;
+
+export const randomFromArray = <T>(arr: T[]) =>
+  arr[Math.floor(Math.random() * arr.length)];

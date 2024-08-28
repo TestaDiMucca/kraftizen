@@ -1,4 +1,4 @@
-import { KraftizenBot, Position } from './types';
+import { KraftizenBot, Persona, Position } from './types';
 
 export const botPosition = (bot: KraftizenBot): Position => {
   const vec = bot.player.entity.position;
@@ -57,4 +57,11 @@ export const getNearestHostileMob = (bot: KraftizenBot, range = 10) => {
   if (nearestHostiles?.[0].position.distanceTo(bot.entity.position) < range) {
     return nearestHostiles[0];
   }
+};
+
+/**
+ * Personas assigned to task return home when bored
+ */
+export const personaReturnsHome = (persona: Persona) => {
+  return ![Persona.follower, Persona.none].includes(persona);
 };

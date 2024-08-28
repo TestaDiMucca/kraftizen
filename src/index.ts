@@ -1,9 +1,9 @@
-import { performTask } from './utils/actions/tasks';
+import { performTask } from './utils/actions/performTask';
 import Kraftizen from './utils/Kraftizen';
 
 const kraftizenRoster: Kraftizen[] = [];
 
-const botNames = ['Hikori'];
+const botNames = ['Kazuma', 'Miko', 'Nakanaka', 'Gilbert'];
 
 botNames
   .map((username) => ({ host: 'localhost', port: 62228, username }))
