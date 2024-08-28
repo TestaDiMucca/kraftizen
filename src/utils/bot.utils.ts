@@ -21,17 +21,21 @@ const equipTiers = [
 export const equipBestToolOfType = (bot: KraftizenBot, toolType: string) => {
   const tools = equipTiers.map((x) => x + '_' + toolType);
 
+  let equipped = false;
   for (let i = tools.length - 1; i >= 0; i--) {
     const tool = tools[i];
+
     let matches = bot.inventory.items().filter((item) => item.name === tool);
+    console.log(matches, tool, bot.inventory.items());
     if (matches.length > 0) {
       bot.equip(matches[0], 'hand');
 
-      return true;
+      equipped = true;
+      break;
     }
-
-    return false;
   }
+
+  return equipped;
 };
 
 export const getNearestHostileMob = (bot: KraftizenBot, range = 10) => {

@@ -21,11 +21,3 @@ export enum Persona {
   miner = 'miner',
   follower = 'follower',
 }
-
-/**
- * Blocking commands, if there are commands queued don't do persona actions
- */
-export enum PlayerCommands {
-  hunt = 'hunt',
-  come = 'come',
-}
