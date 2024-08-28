@@ -1,6 +1,10 @@
 import { goals, Movements } from 'mineflayer-pathfinder';
 import { Entity, KraftizenBot, Position } from '../types';
-import { calculateDistance3D, getRandomIntInclusive } from '../utils';
+import {
+  calculateDistance3D,
+  getRandomIntInclusive,
+  posString,
+} from '../utils';
 import {
   botPosition,
   equipBestToolOfType,
@@ -41,13 +45,13 @@ export default class BehaviorsEngine {
 
   public toCoordinate = async (
     position: Position,
-    deviation = 0
+    deviation = 0,
+    nearRange = 1
   ): Promise<boolean> => {
     return new Promise(async (resolve) => {
       try {
         let timeElapsed = 0;
         const onGoalReached = (gaveUp = false) => {
-          // this.bot.off('goal_reached', onGoalReached);
           if (posTest) clearInterval(posTest);
           resolve(!gaveUp);
         };
@@ -59,25 +63,41 @@ export default class BehaviorsEngine {
           position.x + offset,
           position.y,
           position.z + offset,
-          NEAR_RANGE
+          nearRange
         );
 
-        this.bot.pathfinder.goto(goal);
+        /** Probably another GoalChanged error, who cares */
+        this.bot.pathfinder.goto(goal).catch(() => {});
 
+        let lastPosString: string | null = null;
+        let checksInLastPost = 0;
         const posTest = setInterval(() => {
           if (timeElapsed > GOAL_GIVE_UP_TIME) {
             onGoalReached(true);
             return;
           }
+
+          const currPos = botPosition(this.bot);
+          const currPosString = posString(currPos);
           const distance = calculateDistance3D(
             { x: position.x, y: position.y, z: position.z },
-            botPosition(this.bot)
+            currPos
           );
+
+          /** Don't stay stuck for > 2 checks */
+          if (currPosString === lastPosString) {
+            if (checksInLastPost > 2) {
+              onGoalReached(true);
+              return;
+            }
+            checksInLastPost++;
+          }
 
           if (distance < NEAR_RANGE * 2) {
             onGoalReached(false);
             clearInterval(posTest);
           }
+          lastPosString = currPosString;
           timeElapsed += GOAL_POLL_INTERVAL;
         }, GOAL_POLL_INTERVAL);
       } catch (e) {
@@ -86,16 +106,14 @@ export default class BehaviorsEngine {
     });
   };
 
-  public toPlayer = (username: string) => {
+  public toPlayer = async (username: string) => {
     const player = this.bot.players[username].entity;
 
     if (!player) {
       this.bot.chat('I have nobody to follow.');
     }
 
-    this.bot.chat('Coming!');
-
-    this.toCoordinate(
+    await this.toCoordinate(
       { x: player.position.x, y: player.position.y, z: player.position.z },
       NEAR_RANGE
     );
@@ -107,6 +125,25 @@ export default class BehaviorsEngine {
     } catch (e) {
       console.error('Error cancelling all', e);
     }
+  };
+
+  public getItems = async (onItem: (entity: Entity) => void) => {
+    const drops = Object.values(this.bot.entities)
+      .filter((entity) => entity.name === 'item')
+      .filter(
+        (drop) =>
+          drop.position.distanceTo(this.bot.entity.position) < this.range
+      )
+      .sort((dropA, dropB) => {
+        return (
+          dropA.position.distanceTo(this.bot.entity.position) -
+          dropB.position.distanceTo(this.bot.entity.position)
+        );
+      });
+
+    drops.forEach((drop) => onItem(drop));
+
+    return drops.length;
   };
 
   public attackNearest = async (
@@ -124,9 +161,7 @@ export default class BehaviorsEngine {
       return;
     }
 
-    // TODO: Support list of tools
-    const equipped = equipBestToolOfType(this.bot, 'sword');
-    if (!equipped) equipBestToolOfType(this.bot, 'axe');
+    equipBestToolOfType(this.bot, ['sword', 'axe', 'pickaxe', 'shovel']);
 
     this.bot.lookAt(nearestHostile.position);
 
