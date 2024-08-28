@@ -18,15 +18,17 @@ const equipTiers = [
   'golden',
 ];
 
-export const equipBestToolOfType = (bot: KraftizenBot, toolType: string) => {
-  const tools = equipTiers.map((x) => x + '_' + toolType);
+export const equipBestToolOfType = (bot: KraftizenBot, toolTypes: string[]) => {
+  const tools = toolTypes.flatMap((toolType) =>
+    equipTiers.map((x) => x + '_' + toolType)
+  );
 
   let equipped = false;
   for (let i = tools.length - 1; i >= 0; i--) {
     const tool = tools[i];
 
+    // TODO: this will equip first match, not best tool.
     let matches = bot.inventory.items().filter((item) => item.name === tool);
-    console.log(matches, tool, bot.inventory.items());
     if (matches.length > 0) {
       bot.equip(matches[0], 'hand');
 
@@ -38,8 +40,8 @@ export const equipBestToolOfType = (bot: KraftizenBot, toolType: string) => {
   return equipped;
 };
 
-export const getNearestHostileMob = (bot: KraftizenBot, range = 10) => {
-  const nearestHostiles = Object.values(bot.entities)
+export const getKnownHostileMobs = (bot: KraftizenBot) => {
+  return Object.values(bot.entities)
     .filter((entity) => entity.kind === 'Hostile mobs')
     .sort((mobA, mobB) => {
       return (
@@ -47,6 +49,10 @@ export const getNearestHostileMob = (bot: KraftizenBot, range = 10) => {
         mobB.position.distanceTo(bot.entity.position)
       );
     });
+};
+
+export const getNearestHostileMob = (bot: KraftizenBot, range = 10) => {
+  const nearestHostiles = getKnownHostileMobs(bot);
 
   if (nearestHostiles?.[0].position.distanceTo(bot.entity.position) < range) {
     return nearestHostiles[0];

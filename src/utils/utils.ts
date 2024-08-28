@@ -20,3 +20,5 @@ export const calculateDistance3D = (
 
   return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 };
+
+export const posString = ({ x, y, z }: Position) => `${x},${y},${z}`;

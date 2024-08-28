@@ -19,7 +19,7 @@ export type TaskPayload =
       type: Task.visit;
       position: Position;
     }
-  | { type: Task.hunt; entity?: Entity }
+  | { type: Task.hunt; entity?: Entity; silent?: boolean }
   | {
       type: Task.return | Task.collect;
     };
@@ -36,7 +36,7 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         await behaviors.toPlayer(task.username);
         break;
       case Task.hunt:
-        await behaviors.attackNearest(task.entity, 30, true);
+        await behaviors.attackNearest(task.entity, 30, !task.silent);
         break;
       case Task.return:
         bot.chat('I will return to where I came from.');
@@ -46,12 +46,15 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         await behaviors.toCoordinate(task.position, 0);
         break;
       case Task.collect:
-        await behaviors.getItems((item) => {
+        const items = await behaviors.getItems((item) => {
           kraftizen.addTask({
             type: Task.visit,
             position: item.position,
           });
         });
+
+        if (items === 0) bot.chat('Nothing to collect');
+        break;
       default:
     }
   } catch (e) {
