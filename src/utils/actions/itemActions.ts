@@ -100,6 +100,53 @@ export const hasWeapon = (
   });
 };
 
+export const depositItems = async (
+  kraftizen: Kraftizen,
+  position: Position
+) => {
+  const nearbyChest = kraftizen.behaviors.findChest(
+    rangeToChestOpen,
+    undefined,
+    undefined,
+    position
+  );
+
+  if (!nearbyChest) return;
+
+  await kraftizen.bot.lookAt(nearbyChest.position);
+
+  const chest = await kraftizen.bot.openContainer(nearbyChest);
+
+  if (!chest) return;
+
+  await sleep(1000);
+  const allItems = getAllHeldItems(kraftizen.bot);
+  const depositList = allItems.filter(
+    (item) =>
+      !searchItems.some(
+        (itemType) => item && itemMatches(kraftizen.bot, itemType, item)
+      )
+  );
+
+  let depositCount = 0;
+  for (let i = 0; i < depositList.length; i++) {
+    const item = depositList[i];
+    if (!item) continue;
+
+    try {
+      await chest.deposit(item.type, null, item.count);
+      depositCount++;
+    } catch (e) {
+      console.error('deposit error', e);
+      break;
+    }
+  }
+
+  await chest.close();
+
+  return depositCount;
+};
+
 export const withdrawItems = async (
   kraftizen: Kraftizen,
   position: Position

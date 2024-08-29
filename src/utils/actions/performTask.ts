@@ -1,7 +1,7 @@
 import Kraftizen from '../Kraftizen';
 import { ChestItemClass, Entity, Position } from '../types';
 import { logPrimitives, posString } from '../utils';
-import { withdrawItems } from './itemActions';
+import { depositItems, withdrawItems } from './itemActions';
 
 export enum Task {
   come = 'come',
@@ -12,6 +12,7 @@ export enum Task {
   withdraw = 'withdraw',
   findChest = 'find a chest',
   setHome = 'set home',
+  deposit = 'deposit',
 }
 
 type TaskPayloadCommon = { verbose?: boolean };
@@ -26,6 +27,7 @@ type TaskPayloadByType =
       type: Task.findChest;
       verbose?: boolean;
       withdraw?: boolean;
+      deposit?: boolean;
       multiple?: boolean;
       visited?: Set<string>;
     }
@@ -35,6 +37,7 @@ type TaskPayloadByType =
       verbose?: boolean;
       position?: Position;
     }
+  | { type: Task.deposit; position?: Position }
   | {
       type: Task.visit;
       position: Position;
@@ -86,8 +89,8 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         const visited = task.visited ?? new Set<string>();
         const chest = await behaviors.goToChest(undefined, visited);
 
-        if (chest && task.withdraw) {
-          if (task.multiple) {
+        if (chest) {
+          if (task.multiple && task.withdraw) {
             visited.add(posString(chest.position));
             kraftizen.addTask({
               type: Task.findChest,
@@ -96,15 +99,27 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
               visited,
             });
           }
-          kraftizen.addTask({
-            type: Task.withdraw,
-            verbose: task.verbose,
-            position: chest.position,
-          });
+          if (task.withdraw)
+            kraftizen.addTask({
+              type: Task.withdraw,
+              verbose: task.verbose,
+              position: chest.position,
+            });
+
+          if (task.deposit)
+            kraftizen.addTask({
+              type: Task.deposit,
+              position: chest.position,
+              verbose: task.verbose,
+            });
         } else if (task.verbose && visited.size === 0)
           bot.chat('I see no chests nearby');
         break;
       }
+      case Task.deposit:
+        const depositCount = await depositItems(kraftizen, task.position);
+        if (task.verbose) bot.chat(`I stored ${depositCount} items`);
+        break;
       case Task.withdraw:
         const withdrawCount = await withdrawItems(kraftizen, task.position);
         if (task.verbose) bot.chat(`I got ${withdrawCount} items`);

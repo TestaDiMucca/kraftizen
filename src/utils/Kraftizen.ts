@@ -84,6 +84,15 @@ export default class Kraftizen {
       this.loop();
     });
 
+    this.bot.on('playerCollect', (collector) => {
+      if (collector.uuid === this.bot.entity.uuid) {
+        const slotsEmpty = this.bot.inventory.emptySlotCount();
+        // todo: const
+        if (slotsEmpty < 4)
+          this.addTask({ type: Task.findChest, deposit: true });
+      }
+    });
+
     this.bot.on('chat', this.handleChat);
 
     this.bot.on('respawn', () => {
@@ -169,6 +178,14 @@ export default class Kraftizen {
         break;
       case 'collect':
         this.addTask({ type: Task.collect, verbose: true });
+        break;
+      case 'deposit':
+      case 'unload':
+        this.addTask({
+          type: Task.findChest,
+          deposit: true,
+          verbose: true,
+        });
         break;
       case 'stay':
         this.setPersona(this.previousPersona);
