@@ -5,12 +5,10 @@ import {
   getRandomIntInclusive,
   posString,
 } from '../utils';
-import {
-  botPosition,
-  equipBestToolOfType,
-  getNearestHostileMob,
-} from '../bot.utils';
+import { botPosition, getNearestHostileMob } from '../bot.utils';
 import { PATH_FINDING_TIMEOUT, RANGE } from '../constants';
+import { Vec3 } from 'vec3';
+import { equipBestToolOfType } from './itemActions';
 
 const NEAR_RANGE = 2;
 const GOAL_POLL_INTERVAL = 500;
@@ -45,7 +43,9 @@ export default class BehaviorsEngine {
 
   public toCoordinate = async (
     position: Position,
+    /** Randomness in goal */
     deviation = 0,
+    /** Navigate to this many blocks away */
     nearRange = 1
   ): Promise<boolean> => {
     return new Promise(async (resolve) => {
@@ -104,6 +104,64 @@ export default class BehaviorsEngine {
         resolve(false);
       }
     });
+  };
+
+  public findChest = (
+    range = this.range,
+    blocks = ['chest', 'barrel'],
+    visited: Set<string> = new Set(),
+    position?: Position
+  ) => {
+    if (position) {
+      const specifiedChest = this.bot.blockAt(
+        new Vec3(position.x, position.y, position.z)
+      );
+
+      if (specifiedChest) return specifiedChest;
+    }
+
+    const allChests = this.bot.findBlocks({
+      matching: blocks.map((name) => this.bot.registry.blocksByName[name].id),
+      maxDistance: range,
+      count: 5,
+    });
+
+    const filtered = allChests.filter(
+      (chest) => !visited.has(posString(chest))
+    );
+
+    if (filtered.length === 0) return null;
+
+    return this.bot.blockAt(filtered[0]);
+  };
+
+  public goToChest = async (
+    blocks = ['chest', 'barrel'],
+    visited: Set<string> = new Set()
+  ) => {
+    const chestToOpen = this.findChest(this.range, blocks, visited);
+
+    if (!chestToOpen) return;
+
+    await this.toCoordinate(chestToOpen.position, 0, 2);
+
+    return chestToOpen;
+  };
+
+  public findFood = () => {
+    const food = this.bot.inventory.slots.find(
+      (item) => !!this.bot.registry.foodsByName[item.type]
+    );
+    return food;
+  };
+
+  public getArmorEquipped = (
+    armorType: 'helmet' | 'chestplate' | 'leggings' | 'boots'
+  ) => {
+    const armor = this.bot.entity.equipment.find((eq) =>
+      eq.name.endsWith(armorType)
+    );
+    return armor;
   };
 
   public toPlayer = async (username: string) => {

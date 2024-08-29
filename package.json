@@ -18,7 +18,10 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "fix-esm": "^1.0.1",
     "mineflayer": "^4.20.1",
+    "mineflayer-armor-manager": "^2.0.1",
+    "mineflayer-auto-eat": "^4.0.0",
     "mineflayer-collectblock": "^1.4.1",
     "mineflayer-pathfinder": "^2.4.5",
     "mineflayer-projectile": "^0.1.1",
