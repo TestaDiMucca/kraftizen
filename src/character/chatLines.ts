@@ -1,16 +1,22 @@
 import { KraftizenBot } from '../utils/types';
-import { randomFromArray } from '../utils/utils';
+import { randomFromArray, sleep } from '../utils/utils';
 
 const DEFAULT_LINES: Record<string, string | string[]> = {
-  returning: 'I will return',
-  relaxing: ['I will do nothing now', 'Clocking off'],
-  guarding: ['I will eliminate all threats!', 'Standing guard'],
+  returning: ['I will return', 'Going home'],
+  relaxing: ['I will do nothing now', 'Clocking off', 'Stopping work'],
+  guarding: [
+    'Eliminate all threats!',
+    'Standing guard',
+    'Protecting area',
+    'Annihilate them!',
+  ],
   chatter: [
     'I am so busy',
     'What even is life?',
     'Need recharge',
     'Have a nice day',
     'What are we doing?',
+    'Beyond compare',
   ],
 };
 
@@ -50,6 +56,19 @@ export const sendChat = (
   });
 
   bot.chat(modifiedMessage);
+};
+
+export const sendChats = (
+  bot: KraftizenBot,
+  messagesOrKey: Array<keyof LinesDict | string>,
+  { delay = 500, ...restOpts }: Partial<ChatOpts & { delay: number }> = {}
+) => {
+  void (async () => {
+    for (let i = 0; i < messagesOrKey.length; i++) {
+      sendChat(bot, messagesOrKey[i], restOpts);
+      await sleep(delay);
+    }
+  })();
 };
 
 /**

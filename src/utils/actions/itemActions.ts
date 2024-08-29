@@ -49,6 +49,17 @@ const equipTiers = [
   'golden',
 ];
 
+export const equipRanged = async (bot: KraftizenBot) => {
+  let matches = bot.inventory
+    .items()
+    .filter((item) => item.name === 'bow' || item.name === 'crossbow');
+  if (matches.length > 0) {
+    bot.equip(matches[0], 'hand');
+  }
+
+  return matches[0].name;
+};
+
 export const equipBestToolOfType = (bot: KraftizenBot, toolTypes: string[]) => {
   const tools = toolTypes.flatMap((toolType) =>
     equipTiers.map((x) => x + '_' + toolType)
@@ -73,11 +84,16 @@ export const equipBestToolOfType = (bot: KraftizenBot, toolTypes: string[]) => {
 
 export const hasWeapon = (
   bot: KraftizenBot,
-  type: 'melee' | 'ranged' = 'melee'
+  type: 'melee' | 'ranged' | 'arrow' = 'melee'
 ) => {
   const allItems = getAllHeldItems(bot);
 
-  const searchFor = type === 'melee' ? ['sword', 'axe'] : ['bow'];
+  const searchFor =
+    type === 'melee'
+      ? ['sword', 'axe']
+      : type === 'arrow'
+      ? ['arrow']
+      : ['bow'];
 
   return allItems.some((item) => {
     return searchFor.some((weapon) => item && item.name.includes(weapon));

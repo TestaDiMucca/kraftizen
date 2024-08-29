@@ -1,6 +1,6 @@
 import Kraftizen from '../Kraftizen';
 import { ChestItemClass, Entity, Position } from '../types';
-import { posString } from '../utils';
+import { logPrimitives, posString } from '../utils';
 import { withdrawItems } from './itemActions';
 
 export enum Task {
@@ -11,7 +11,6 @@ export enum Task {
   collect = 'collect',
   withdraw = 'withdraw',
   findChest = 'find a chest',
-  goto = 'travel',
   setHome = 'set home',
 }
 
@@ -51,7 +50,7 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
   const { type } = task;
   const { behaviors, bot } = kraftizen;
 
-  console.debug('starting task', task);
+  logPrimitives('starting task', task);
   try {
     switch (type) {
       case Task.come:
@@ -65,7 +64,12 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         await behaviors.toCoordinate(kraftizen.homePoint);
         break;
       case Task.visit:
-        // todo: test path
+        const possible = behaviors.isPathPossible(task.position);
+
+        if (!possible) {
+          bot.chat('I cannot get there');
+          break;
+        }
         await behaviors.toCoordinate(task.position, 0);
         break;
       case Task.collect:

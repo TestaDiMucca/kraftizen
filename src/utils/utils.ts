@@ -25,3 +25,22 @@ export const posString = ({ x, y, z }: Position) => `${x},${y},${z}`;
 
 export const randomFromArray = <T>(arr: T[]) =>
   arr[Math.floor(Math.random() * arr.length)];
+
+export const logPrimitives = (...args: any[]): void => {
+  const processedArgs = [];
+  args.forEach((arg) => {
+    if (arg !== Object(arg)) {
+      processedArgs.push(arg);
+    } else if (typeof arg === 'object' && arg !== null) {
+      const filteredObject = {};
+      for (const [key, value] of Object.entries(arg)) {
+        if (value !== Object(value)) {
+          filteredObject[key] = value;
+        }
+      }
+      processedArgs.push(filteredObject);
+    }
+  });
+
+  console.debug(...processedArgs);
+};

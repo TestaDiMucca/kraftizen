@@ -47,6 +47,9 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
         if (farFromHome) {
           kraftizen.bot.chat('All done here');
           kraftizen.addTask({ type: Task.return });
+        } else {
+          // Clean up
+          kraftizen.addTask({ type: Task.collect });
         }
       }
 

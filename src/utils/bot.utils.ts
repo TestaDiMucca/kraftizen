@@ -1,4 +1,4 @@
-import { KraftizenBot, Persona, Position } from './types';
+import { Entity, KraftizenBot, Persona, Position } from './types';
 
 export const botPosition = (bot: KraftizenBot): Position => {
   const vec = bot.player.entity.position;
@@ -21,8 +21,12 @@ export const getKnownHostileMobs = (bot: KraftizenBot) => {
     });
 };
 
-export const getNearestHostileMob = (bot: KraftizenBot, range = 10) => {
-  const nearestHostiles = getKnownHostileMobs(bot);
+export const getNearestHostileMob = (
+  bot: KraftizenBot,
+  range = 10,
+  additionalFilter: (mob: Entity) => boolean = (_) => true
+) => {
+  const nearestHostiles = getKnownHostileMobs(bot).filter(additionalFilter);
 
   if (nearestHostiles?.[0].position.distanceTo(bot.entity.position) < range) {
     return nearestHostiles[0];

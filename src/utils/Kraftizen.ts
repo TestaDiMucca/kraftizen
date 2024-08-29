@@ -3,6 +3,7 @@ import minecraftData from 'minecraft-data';
 import pathfinder from 'mineflayer-pathfinder';
 const autoEat = require('fix-esm').require('mineflayer-auto-eat').plugin;
 import armorManager from 'mineflayer-armor-manager';
+import hawkeye from 'minecrafthawkeye';
 
 import { KraftizenBot, Persona, Position } from './types';
 import { Movements } from 'mineflayer-pathfinder';
@@ -51,11 +52,18 @@ export default class Kraftizen {
     this.setup();
   }
 
+  public getMovements = () => this.defaultMove;
+
   /**
    * Apply all the basic listeners
    */
   private setup = () => {
-    this.bot.loadPlugins([pathfinder.pathfinder, autoEat, armorManager]);
+    this.bot.loadPlugins([
+      pathfinder.pathfinder,
+      autoEat,
+      armorManager,
+      hawkeye,
+    ]);
     this.bot.on('spawn', () => {
       this.mcData = minecraftData(this.bot.version);
       this.defaultMove = new Movements(this.bot);
@@ -142,6 +150,7 @@ export default class Kraftizen {
         );
         break;
       case 'follow':
+        this.dropAllTasks();
         this.bot.chat(`I will follow you, ${username}.`);
         this.previousPersona = this.persona;
         this.persona = Persona.follower;
@@ -154,6 +163,7 @@ export default class Kraftizen {
         this.setHome();
         break;
       case 'relax':
+      case 'chill':
         sendChat(this.bot, 'relaxing');
         this.setPersona(Persona.none);
         break;
@@ -165,6 +175,7 @@ export default class Kraftizen {
         break;
       case 'come':
       case 'here':
+        this.dropAllTasks();
         this.taskQueue.unshift({ type: Task.come, username, oneTime: true });
         break;
       case 'camp here':
@@ -174,8 +185,11 @@ export default class Kraftizen {
       case 'hunt':
         this.taskQueue.unshift({ type: Task.hunt, verbose: true });
         break;
+      case 'inventory':
+        this.behaviors.listInventory();
+        break;
       case 'current task':
-        this.bot.chat(`My current task is ${this.currentTask ?? 'nothing'}`);
+        this.bot.chat(`My current task is to ${this.currentTask ?? 'nothing'}`);
         break;
       case 'return':
         sendChat(this.bot, 'returning');
@@ -218,6 +232,11 @@ export default class Kraftizen {
 
   public finishCurrentTask = () => {
     this.currentTask = null;
+  };
+
+  private dropAllTasks = () => {
+    this.finishCurrentTask();
+    this.taskQueue = [];
   };
 
   /**

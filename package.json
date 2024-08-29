@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "fix-esm": "^1.0.1",
+    "minecrafthawkeye": "^1.3.9",
     "mineflayer": "^4.20.1",
     "mineflayer-armor-manager": "^2.0.1",
     "mineflayer-auto-eat": "^4.0.0",

@@ -1,6 +1,8 @@
 interface RateLimitOptions {
-  windowMs: number; // Time window in milliseconds
-  max: number; // Maximum number of allowed calls in the window
+  /** Time window, in ms */
+  windowMs: number;
+  /** Allowed calls during each window */
+  max: number;
 }
 
 class RateLimiter {
@@ -9,12 +11,12 @@ class RateLimiter {
 
   constructor(private defaultOptions: RateLimitOptions) {}
 
-  // Set custom limit for a specific key
+  /** Set custom limit for a specific key */
   setLimitForKey(key: string, options: RateLimitOptions): void {
     this.limits.set(key, options);
   }
 
-  // Check if the request can go through
+  /** Check if the request can go through */
   tryCall(key: string, id?: string): boolean {
     const options = this.limits.get(key) || this.defaultOptions;
     const now = Date.now();
