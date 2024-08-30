@@ -24,11 +24,14 @@ type BehaviorsEngineOpts = {
   range?: number;
 };
 
+type AttackMode = 'melee' | 'normal' | 'peace';
+
 export default class BehaviorsEngine {
   defaultMove: Movements;
   bot: KraftizenBot;
   defaultTargetPlayer: string | null = null;
   range = RANGE;
+  attackMode: AttackMode = 'normal';
 
   constructor(opts: BehaviorsEngineOpts) {
     this.defaultMove = opts.defaultMove;
@@ -222,7 +225,11 @@ export default class BehaviorsEngine {
   };
 
   private canShootWithBow = (target: Entity): 'noBow' | 'yes' | 'outRange' => {
-    if (!hasWeapon(this.bot, 'arrow') || !hasWeapon(this.bot, 'ranged'))
+    if (
+      !hasWeapon(this.bot, 'arrow') ||
+      !hasWeapon(this.bot, 'ranged') ||
+      this.attackMode != 'normal'
+    )
       return 'noBow';
 
     const distance = calculateDistance3D(
@@ -267,28 +274,36 @@ export default class BehaviorsEngine {
     this.bot.deactivateItem();
   };
 
+  /**
+   * Get nearest mob we have walking access to
+   */
+  public getNearestHostileMob = (range = this.range) => {
+    return getNearestHostileMob(this.bot, range ?? this.range, (mob) => {
+      if (mob.position.distanceTo(this.bot.entity.position) > this.range)
+        return false;
+
+      return this.isPathPossible(mob.position);
+    });
+  };
+
   public attackNearest = async (
     target?: Entity,
     range?: number,
-    chat = false
+    chat = false,
+    forceMelee = false
   ) => {
     if (this.bot.pathfinder.goal) return;
 
-    const nearestHostile =
-      target ??
-      getNearestHostileMob(this.bot, range ?? this.range, (mob) => {
-        if (mob.position.distanceTo(this.bot.entity.position) > this.range)
-          return false;
-
-        return this.isPathPossible(mob.position);
-      });
+    const nearestHostile = target ?? this.getNearestHostileMob(range);
 
     if (!nearestHostile) {
       if (chat) this.bot.chat('Looks like nothing nearby');
       return;
     }
 
-    const canShoot = this.canShootWithBow(nearestHostile);
+    const canShoot = forceMelee
+      ? 'noBow'
+      : this.canShootWithBow(nearestHostile);
 
     const nextLoop = () => {
       if (nearestHostile.isValid)

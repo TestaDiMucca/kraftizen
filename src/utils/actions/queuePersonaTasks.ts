@@ -60,13 +60,31 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
         );
 
         if (complain)
-          sendChat(kraftizen.bot, 'I have no weapons but I am a guard');
+          sendChat(kraftizen.bot, 'I have no weapons but I am a guard', {
+            chance: 0.5,
+          });
       }
 
       break;
     default:
       handleBoredom(kraftizen);
       break;
+  }
+
+  queueStandardTasks(kraftizen);
+};
+
+const queueStandardTasks = async (kraftizen: Kraftizen) => {
+  if (Math.random() < 0.1) {
+    /* Usually we should get attacked and respond anyway */
+    const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
+
+    if (nearbyEnemy && kraftizen.taskQueue.length <= 1) {
+      kraftizen.addTask({
+        type: Task.hunt,
+        entity: nearbyEnemy,
+      });
+    }
   }
 };
 
