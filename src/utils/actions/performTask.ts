@@ -42,7 +42,12 @@ type TaskPayloadByType =
       type: Task.visit;
       position: Position;
     }
-  | { type: Task.hunt; entity?: Entity; verbose?: boolean }
+  | {
+      type: Task.hunt;
+      entity?: Entity;
+      verbose?: boolean;
+      forceMelee?: boolean;
+    }
   | {
       type: Task.return | Task.collect | Task.setHome;
     };
@@ -61,7 +66,12 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         await behaviors.toPlayer(task.username);
         break;
       case Task.hunt:
-        await behaviors.attackNearest(task.entity, 30, task.verbose);
+        await behaviors.attackNearest(
+          task.entity,
+          30,
+          task.verbose,
+          task.forceMelee
+        );
         break;
       case Task.return:
         await behaviors.toCoordinate(kraftizen.homePoint);
