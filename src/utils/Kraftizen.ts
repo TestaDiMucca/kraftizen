@@ -7,7 +7,7 @@ import hawkeye from 'minecrafthawkeye';
 
 import { KraftizenBot, Persona, Position } from './types';
 import { Movements } from 'mineflayer-pathfinder';
-import { botPosition } from './bot.utils';
+import { botPosition, getDefaultMovements } from './bot.utils';
 import { greet } from './actions/greet';
 import { calculateDistance3D, getRandomIntInclusive, sleep } from './utils';
 import BehaviorsEngine from './actions/behaviors';
@@ -15,6 +15,13 @@ import { Task, TaskPayload } from './actions/performTask';
 import { performTask } from './actions/performTask';
 import { queuePersonaTasks } from './actions/queuePersonaTasks';
 import { sendChat } from '../character/chatLines';
+import TeamMessenger, { TeamMessage } from './TeamMessenger';
+import rateLimiter from './RateLimiter';
+
+rateLimiter.setLimitForKey('demandHelp', {
+  max: 1,
+  windowMs: 1000 * 30,
+});
 
 export default class Kraftizen {
   /** Reference to the core bot brain */
@@ -23,8 +30,6 @@ export default class Kraftizen {
   state: string = 'existing';
   /** Be on the lookout for more commands */
   listening = false;
-  /** Disable all attacking behaviors */
-  passive = false;
   /** Current job */
   persona = Persona.none;
   previousPersona = Persona.none;
@@ -40,19 +45,51 @@ export default class Kraftizen {
 
   private defaultMove: Movements;
   private mcData: ReturnType<typeof minecraftData>;
+  private messenger: TeamMessenger;
 
   currentTask: TaskPayload;
 
   constructor(
-    options: mineflayer.BotOptions,
+    options: mineflayer.BotOptions & { messenger: TeamMessenger },
     private taskRunner: typeof performTask
   ) {
-    this.bot = mineflayer.createBot(options);
+    const { messenger, ...botOpts } = options;
+    this.bot = mineflayer.createBot(botOpts);
+    this.messenger = messenger;
 
     this.setup();
   }
 
   public getMovements = () => this.defaultMove;
+
+  private messageOthers = (message: Omit<TeamMessage, 'sender'>) => {
+    this.messenger.messageTeam({ ...message, sender: this });
+  };
+
+  public onTeamMessage = (message: TeamMessage) => {
+    // ignore far peeps
+    const distance = this.bot.entity.position.distanceTo(
+      message.sender.bot.entity.position
+    );
+
+    if (distance > this.behaviors.range) return;
+
+    const senderUsername = message.sender.bot.username;
+    switch (message.message) {
+      case 'help':
+        console.log(senderUsername, 'asked for help from', this.bot.username);
+        this.addTasks(
+          [
+            { type: Task.come, username: senderUsername },
+            { type: Task.hunt, forceMelee: true },
+          ],
+          false
+        );
+        this.bot.chat(`Coming ${senderUsername}`);
+        break;
+      default:
+    }
+  };
 
   /**
    * Apply all the basic listeners
@@ -66,8 +103,7 @@ export default class Kraftizen {
     ]);
     this.bot.on('spawn', () => {
       this.mcData = minecraftData(this.bot.version);
-      this.defaultMove = new Movements(this.bot);
-      this.defaultMove.canOpenDoors = true;
+      this.defaultMove = getDefaultMovements(this.bot);
 
       this.behaviors = new BehaviorsEngine({
         bot: this.bot,
@@ -96,7 +132,10 @@ export default class Kraftizen {
     this.bot.on('chat', this.handleChat);
 
     this.bot.on('respawn', () => {
-      this.addTask({ type: Task.findChest, withdraw: true, multiple: true });
+      this.addTasks([
+        { type: Task.return },
+        { type: Task.findChest, withdraw: true, multiple: true },
+      ]);
     });
 
     this.bot.on('health', () => {
@@ -104,15 +143,26 @@ export default class Kraftizen {
       else this.bot.autoEat?.enable();
     });
 
-    this.bot._client.on('hurt_animation', async (packet) => {
+    this.bot._client.on('hurt_animation', async (packet, meta) => {
       const entity = this.bot.entities[packet.entityId];
-      if (
-        entity.uuid === this.bot.entity.uuid &&
-        !this.taskQueue.find((i) => i.type === Task.hunt)
-      )
+
+      /** Already fighting */
+      if (this.hasTask(Task.hunt)) return;
+
+      if (entity.uuid === this.bot.entity.uuid) {
         this.addTask({ type: Task.hunt });
+        if (
+          this.bot.health < 8 &&
+          rateLimiter.tryCall('demandHelp', this.bot.username)
+        ) {
+          this.bot.chat('help!');
+          this.messageOthers({ message: 'help' });
+        }
+      }
     });
   };
+
+  private hasTask = (task: Task) => this.taskQueue.find((i) => i.type === task);
 
   public distanceFromHome = (position?: Position) => {
     return calculateDistance3D(
@@ -202,15 +252,23 @@ export default class Kraftizen {
       case 'hunt':
         this.taskQueue.unshift({ type: Task.hunt, verbose: true });
         break;
+      case 'nearby':
+        console.log(this.bot.entities);
+        break;
       case 'inventory':
         this.behaviors.listInventory();
         break;
       case 'current task':
-        this.bot.chat(`My current task is to ${this.currentTask ?? 'nothing'}`);
+        this.bot.chat(`My current task is to ${this.currentTask ?? 'idle'}`);
         break;
       case 'return':
         sendChat(this.bot, 'returning');
         this.taskQueue.unshift({ type: Task.return });
+        break;
+      case 'prefer melee':
+        // TODO: improve commanding
+        this.behaviors.attackMode = 'melee';
+        this.bot.chat('I will attack melee from now on');
         break;
       case 'stock up':
         this.taskQueue.unshift({
@@ -247,6 +305,14 @@ export default class Kraftizen {
     else this.taskQueue.unshift(task);
   };
 
+  public addTasks = (tasks: TaskPayload[], atEnd = false) => {
+    if (atEnd) {
+      tasks.forEach((task) => this.addTask(task, atEnd));
+    } else {
+      tasks.reverse().forEach((task) => this.addTask(task));
+    }
+  };
+
   public finishCurrentTask = () => {
     this.currentTask = null;
   };
@@ -267,7 +333,7 @@ export default class Kraftizen {
       if (nextTask && !this.currentTask) {
         this.currentTask = nextTask;
         await this.performTask(nextTask);
-        delay = 900;
+        delay = 500;
       }
 
       if (this.taskQueue.length === 0) {
