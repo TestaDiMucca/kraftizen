@@ -1,6 +1,9 @@
 import mineflayer from 'mineflayer';
 import minecraftData from 'minecraft-data';
 import pathfinder from 'mineflayer-pathfinder';
+const autoEat = require('fix-esm').require('mineflayer-auto-eat').plugin;
+import armorManager from 'mineflayer-armor-manager';
+import hawkeye from 'minecrafthawkeye';
 
 import { KraftizenBot, Persona, Position } from './types';
 import { Movements } from 'mineflayer-pathfinder';
@@ -12,8 +15,6 @@ import { Task, TaskPayload } from './actions/performTask';
 import { performTask } from './actions/performTask';
 import { queuePersonaTasks } from './actions/queuePersonaTasks';
 import { sendChat } from '../character/chatLines';
-
-type KraftizenState = {};
 
 export default class Kraftizen {
   /** Reference to the core bot brain */
@@ -51,14 +52,22 @@ export default class Kraftizen {
     this.setup();
   }
 
+  public getMovements = () => this.defaultMove;
+
   /**
    * Apply all the basic listeners
    */
   private setup = () => {
-    this.bot.loadPlugins([pathfinder.pathfinder]);
+    this.bot.loadPlugins([
+      pathfinder.pathfinder,
+      autoEat,
+      armorManager,
+      hawkeye,
+    ]);
     this.bot.on('spawn', () => {
       this.mcData = minecraftData(this.bot.version);
       this.defaultMove = new Movements(this.bot);
+      this.defaultMove.canOpenDoors = true;
 
       this.behaviors = new BehaviorsEngine({
         bot: this.bot,
@@ -70,10 +79,30 @@ export default class Kraftizen {
 
       greet(this.bot);
 
+      this.bot.armorManager.equipAll();
+
       this.loop();
     });
 
+    this.bot.on('playerCollect', (collector) => {
+      if (collector.uuid === this.bot.entity.uuid) {
+        const slotsEmpty = this.bot.inventory.emptySlotCount();
+        // todo: const
+        if (slotsEmpty < 4)
+          this.addTask({ type: Task.findChest, deposit: true });
+      }
+    });
+
     this.bot.on('chat', this.handleChat);
+
+    this.bot.on('respawn', () => {
+      this.addTask({ type: Task.findChest, withdraw: true, multiple: true });
+    });
+
+    this.bot.on('health', () => {
+      if (this.bot.food >= 18) this.bot.autoEat?.disable();
+      else this.bot.autoEat?.enable();
+    });
 
     this.bot._client.on('hurt_animation', async (packet) => {
       const entity = this.bot.entities[packet.entityId];
@@ -92,7 +121,7 @@ export default class Kraftizen {
     );
   };
 
-  private setHome = () => {
+  public setHome = () => {
     this.bot.chat('I will stay around here');
     this.homePoint = botPosition(this.bot);
   };
@@ -130,6 +159,7 @@ export default class Kraftizen {
         );
         break;
       case 'follow':
+        this.dropAllTasks();
         this.bot.chat(`I will follow you, ${username}.`);
         this.previousPersona = this.persona;
         this.persona = Persona.follower;
@@ -142,28 +172,53 @@ export default class Kraftizen {
         this.setHome();
         break;
       case 'relax':
+      case 'chill':
         sendChat(this.bot, 'relaxing');
         this.setPersona(Persona.none);
         break;
       case 'collect':
-        this.addTask({ type: Task.collect });
+        this.addTask({ type: Task.collect, verbose: true });
+        break;
+      case 'deposit':
+      case 'unload':
+        this.addTask({
+          type: Task.findChest,
+          deposit: true,
+          verbose: true,
+        });
         break;
       case 'stay':
         this.setPersona(this.previousPersona);
         break;
       case 'come':
       case 'here':
+        this.dropAllTasks();
         this.taskQueue.unshift({ type: Task.come, username, oneTime: true });
         break;
+      case 'camp here':
+        this.taskQueue.unshift({ type: Task.come, username, oneTime: true });
+        this.taskQueue.push({ type: Task.setHome });
+        break;
       case 'hunt':
-        this.taskQueue.unshift({ type: Task.hunt });
+        this.taskQueue.unshift({ type: Task.hunt, verbose: true });
+        break;
+      case 'inventory':
+        this.behaviors.listInventory();
         break;
       case 'current task':
-        this.bot.chat(`My current task is ${this.currentTask ?? 'nothing'}`);
+        this.bot.chat(`My current task is to ${this.currentTask ?? 'nothing'}`);
         break;
       case 'return':
         sendChat(this.bot, 'returning');
         this.taskQueue.unshift({ type: Task.return });
+        break;
+      case 'stock up':
+        this.taskQueue.unshift({
+          type: Task.findChest,
+          verbose: true,
+          withdraw: true,
+          multiple: true,
+        });
         break;
       default:
         this.bot.chat(
@@ -194,6 +249,11 @@ export default class Kraftizen {
 
   public finishCurrentTask = () => {
     this.currentTask = null;
+  };
+
+  private dropAllTasks = () => {
+    this.finishCurrentTask();
+    this.taskQueue = [];
   };
 
   /**

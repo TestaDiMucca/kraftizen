@@ -5,6 +5,18 @@ import Kraftizen from '../Kraftizen';
 import { Persona } from '../types';
 import { randomFromArray } from '../utils';
 import { Task } from './performTask';
+import rateLimiter from '../RateLimiter';
+import { hasWeapon } from './itemActions';
+
+rateLimiter.setLimitForKey('checkChests', {
+  max: 1,
+  windowMs: 1000 * 60 * 5,
+});
+
+rateLimiter.setLimitForKey('unarmedGuard', {
+  max: 1,
+  windowMs: 1000 * 60 * 30,
+});
 
 /**
  * Queue tasks according to persona
@@ -27,7 +39,6 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
         kraftizen.addTask({
           type: Task.hunt,
           entity: nearbyMobs[0],
-          silent: true,
         });
       } else {
         // nothing to hunt
@@ -36,7 +47,20 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
         if (farFromHome) {
           kraftizen.bot.chat('All done here');
           kraftizen.addTask({ type: Task.return });
+        } else {
+          // Clean up
+          kraftizen.addTask({ type: Task.collect });
         }
+      }
+
+      if (!hasWeapon(kraftizen.bot)) {
+        const complain = rateLimiter.tryCall(
+          'unarmedGuard',
+          kraftizen.bot.username
+        );
+
+        if (complain)
+          sendChat(kraftizen.bot, 'I have no weapons but I am a guard');
       }
 
       break;
@@ -47,6 +71,9 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
 };
 
 const handleBoredom = (kraftizen: Kraftizen) => {
+  /** If you have tasks you are not bored */
+  if (kraftizen.taskQueue.length > 0) return;
+
   const distanceFromHome = kraftizen.distanceFromHome();
   /** Bored */
   if (Math.random() < 0.2) {
@@ -59,6 +86,27 @@ const handleBoredom = (kraftizen: Kraftizen) => {
     personaReturnsHome(kraftizen.persona)
   ) {
     kraftizen.addTask({ type: Task.return });
+  } else if (
+    Math.random() < 0.05 &&
+    rateLimiter.tryCall('checkChests', kraftizen.bot.username)
+  ) {
+    const position = kraftizen.bot.entity.position;
+    kraftizen.addTask({
+      type: Task.findChest,
+      multiple: true,
+      withdraw: true,
+    });
+    kraftizen.addTask(
+      {
+        type: Task.visit,
+        position,
+      },
+      true
+    );
+  } else if (Math.random() < 0.05) {
+    kraftizen.addTask({
+      type: Task.collect,
+    });
   }
 
   sendChat(kraftizen.bot, 'chatter', { chance: 0.5 });

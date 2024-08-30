@@ -1,4 +1,4 @@
-import { KraftizenBot, Persona, Position } from './types';
+import { Entity, KraftizenBot, Persona, Position } from './types';
 
 export const botPosition = (bot: KraftizenBot): Position => {
   const vec = bot.player.entity.position;
@@ -8,36 +8,6 @@ export const botPosition = (bot: KraftizenBot): Position => {
     y: vec.y,
     z: vec.z,
   };
-};
-const equipTiers = [
-  'netherite',
-  'diamond',
-  'iron',
-  'stone',
-  'wooden',
-  'golden',
-];
-
-export const equipBestToolOfType = (bot: KraftizenBot, toolTypes: string[]) => {
-  const tools = toolTypes.flatMap((toolType) =>
-    equipTiers.map((x) => x + '_' + toolType)
-  );
-
-  let equipped = false;
-  for (let i = tools.length - 1; i >= 0; i--) {
-    const tool = tools[i];
-
-    // TODO: this will equip first match, not best tool.
-    let matches = bot.inventory.items().filter((item) => item.name === tool);
-    if (matches.length > 0) {
-      bot.equip(matches[0], 'hand');
-
-      equipped = true;
-      break;
-    }
-  }
-
-  return equipped;
 };
 
 export const getKnownHostileMobs = (bot: KraftizenBot) => {
@@ -51,8 +21,12 @@ export const getKnownHostileMobs = (bot: KraftizenBot) => {
     });
 };
 
-export const getNearestHostileMob = (bot: KraftizenBot, range = 10) => {
-  const nearestHostiles = getKnownHostileMobs(bot);
+export const getNearestHostileMob = (
+  bot: KraftizenBot,
+  range = 10,
+  additionalFilter: (mob: Entity) => boolean = (_) => true
+) => {
+  const nearestHostiles = getKnownHostileMobs(bot).filter(additionalFilter);
 
   if (nearestHostiles?.[0].position.distanceTo(bot.entity.position) < range) {
     return nearestHostiles[0];
