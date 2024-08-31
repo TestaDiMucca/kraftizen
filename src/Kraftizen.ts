@@ -5,23 +5,23 @@ const autoEat = require('fix-esm').require('mineflayer-auto-eat').plugin;
 import armorManager from 'mineflayer-armor-manager';
 import hawkeye from 'minecrafthawkeye';
 
-import { KraftizenBot, Persona, Position } from './types';
+import { KraftizenBot, Persona, Position } from './utils/types';
 import { Movements } from 'mineflayer-pathfinder';
-import { botPosition, getDefaultMovements } from './bot.utils';
-import { greet } from './actions/greet';
-import { calculateDistance3D, getRandomIntInclusive, sleep } from './utils';
-import BehaviorsEngine from './actions/behaviors';
-import { Task, TaskPayload } from './actions/performTask';
-import { performTask } from './actions/performTask';
-import { queuePersonaTasks } from './actions/queuePersonaTasks';
-import { sendChat } from '../character/chatLines';
-import TeamMessenger, { TeamMessage } from './TeamMessenger';
-import rateLimiter from './RateLimiter';
-
-rateLimiter.setLimitForKey('demandHelp', {
-  max: 1,
-  windowMs: 1000 * 30,
-});
+import { botPosition, getDefaultMovements } from './utils/bot.utils';
+import { greet } from './utils/actions/greet';
+import {
+  calculateDistance3D,
+  getRandomIntInclusive,
+  sleep,
+} from './utils/utils';
+import BehaviorsEngine from './utils/actions/behaviors';
+import { Task, TaskPayload } from './utils/actions/performTask';
+import { performTask } from './utils/actions/performTask';
+import { queuePersonaTasks } from './utils/actions/queuePersonaTasks';
+import { sendChat } from './character/chatLines';
+import TeamMessenger, { TeamMessage } from './utils/TeamMessenger';
+import { getRateLimiter } from './utils/RateLimiter';
+import QueueManager from './utils/QueueManager';
 
 export default class Kraftizen {
   /** Reference to the core bot brain */
@@ -39,17 +39,15 @@ export default class Kraftizen {
   lord: string | null = null;
   lastCommandFrom: string | null = null;
 
-  taskQueue: TaskPayload[] = [];
-
+  tasks = new QueueManager();
   behaviors: BehaviorsEngine;
+  rateLimiter = getRateLimiter();
 
   username: string;
 
   private defaultMove: Movements;
   private mcData: ReturnType<typeof minecraftData>;
   private messenger: TeamMessenger;
-
-  currentTask: TaskPayload;
 
   constructor(
     options: mineflayer.BotOptions & { messenger: TeamMessenger },
@@ -131,16 +129,32 @@ export default class Kraftizen {
         const slotsEmpty = this.bot.inventory.emptySlotCount();
         // todo: const
         if (slotsEmpty < 4)
-          this.addTask({ type: Task.findChest, deposit: true });
+          this.addTask({ type: Task.findBlock, deposit: true });
       }
     });
 
     this.bot.on('chat', this.handleChat);
 
+    this.bot.on('death', () => {
+      /** Return to death point */
+      this.tasks.dropAllTasks();
+      this.tasks.addTasks(
+        [
+          {
+            type: Task.visit,
+            position: this.bot.entity.position,
+          },
+        ],
+        true
+      );
+      this.tasks.blockTasksForMs(5000);
+    });
     this.bot.on('respawn', () => {
+      this.bot.chat('Oops');
       this.addTasks([
         { type: Task.return },
-        { type: Task.findChest, withdraw: true, multiple: true },
+        { type: Task.collect },
+        { type: Task.findBlock, withdraw: true, multiple: true },
       ]);
     });
 
@@ -150,7 +164,7 @@ export default class Kraftizen {
     });
 
     this.bot.on('wake', () => {
-      this.dropAllTasks();
+      this.tasks.dropAllTasks();
       this.addTask({ type: Task.return });
     });
 
@@ -158,27 +172,18 @@ export default class Kraftizen {
       const entity = this.bot.entities[packet.entityId];
 
       /** Already fighting */
-      if (this.hasTask(Task.hunt)) return;
+      if (this.tasks.firstTaskIs(Task.hunt)) return;
 
       if (entity.uuid === this.bot.entity.uuid) {
         this.addTask({ type: Task.hunt });
-        if (
-          this.bot.health < 8 &&
-          rateLimiter.tryCall('demandHelp', this.bot.username)
-        ) {
-          this.addTask({ type: Task.return });
+        if (this.bot.health < 8 && this.rateLimiter.tryCall('demandHelp')) {
+          this.addTasks([{ type: Task.return }, { type: Task.eat }]);
           this.bot.chat('help!');
           this.messageOthers({ message: 'help' });
         }
       }
     });
   };
-
-  public removeTasksOfType = (taskType: Task) => {
-    this.taskQueue = this.taskQueue.filter((task) => task.type === taskType);
-  };
-
-  public hasTask = (task: Task) => this.taskQueue.find((i) => i.type === task);
 
   public distanceFromHome = (position?: Position) => {
     return calculateDistance3D(
@@ -224,8 +229,11 @@ export default class Kraftizen {
           getRandomIntInclusive(100, 1000)
         );
         break;
+      case 'eat':
+        this.behaviors.eat(true);
+        break;
       case 'follow':
-        this.dropAllTasks();
+        this.tasks.dropAllTasks();
         this.bot.chat(`I will follow you, ${username}.`);
         this.previousPersona = this.persona;
         this.persona = Persona.follower;
@@ -261,7 +269,7 @@ export default class Kraftizen {
       case 'deposit':
       case 'unload':
         this.addTask({
-          type: Task.findChest,
+          type: Task.findBlock,
           deposit: true,
           verbose: true,
         });
@@ -271,11 +279,11 @@ export default class Kraftizen {
         break;
       case 'come':
       case 'here':
-        this.dropAllTasks();
-        this.taskQueue.unshift({ type: Task.come, username, oneTime: true });
+        this.tasks.dropAllTasks();
+        this.tasks.addTask({ type: Task.come, username, oneTime: true });
         break;
       case 'camp here':
-        this.taskQueue.unshift({
+        this.tasks.addTask({
           type: Task.come,
           username,
           oneTime: true,
@@ -283,7 +291,7 @@ export default class Kraftizen {
         });
         break;
       case 'hunt':
-        this.taskQueue.unshift({ type: Task.hunt, verbose: true });
+        this.tasks.addTask({ type: Task.hunt, verbose: true });
         break;
       case 'nearby':
         console.log(this.bot.entities);
@@ -292,11 +300,13 @@ export default class Kraftizen {
         this.behaviors.listInventory();
         break;
       case 'current task':
-        this.bot.chat(`My current task is to ${this.currentTask ?? 'idle'}`);
+        this.bot.chat(
+          `My current task is to ${this.tasks.currentTask.type ?? 'idle'}`
+        );
         break;
       case 'return':
         sendChat(this.bot, 'returning');
-        this.taskQueue.unshift({ type: Task.return });
+        this.tasks.addTask({ type: Task.return });
         break;
       case 'prefer melee':
         // TODO: improve commanding
@@ -312,8 +322,8 @@ export default class Kraftizen {
         break;
       case 'withdraw':
       case 'stock up':
-        this.taskQueue.unshift({
-          type: Task.findChest,
+        this.tasks.addTask({
+          type: Task.findBlock,
           verbose: true,
           withdraw: true,
           multiple: true,
@@ -342,8 +352,7 @@ export default class Kraftizen {
   };
 
   public addTask = (task: TaskPayload, atEnd = false) => {
-    if (atEnd) this.taskQueue.push(task);
-    else this.taskQueue.unshift(task);
+    this.tasks.addTask(task, atEnd);
   };
 
   public addTasks = (tasks: TaskPayload[], atEnd = false) => {
@@ -354,30 +363,21 @@ export default class Kraftizen {
     }
   };
 
-  public finishCurrentTask = () => {
-    this.currentTask = null;
-  };
-
-  private dropAllTasks = () => {
-    this.finishCurrentTask();
-    this.taskQueue = [];
-  };
-
   /**
    * Main behaviors loop
    */
   private loop = async () => {
     let delay = 2000;
     try {
-      const nextTask = this.taskQueue.shift();
+      const nextTask = this.tasks.nextTask();
 
-      if (nextTask && !this.currentTask) {
-        this.currentTask = nextTask;
+      if (nextTask && !this.tasks.currentTask) {
+        this.tasks.currentTask = nextTask;
         await this.performTask(nextTask);
         delay = 500;
       }
 
-      if (this.taskQueue.length === 0) {
+      if (this.tasks.isEmpty()) {
         await queuePersonaTasks(this);
       }
     } catch (e) {

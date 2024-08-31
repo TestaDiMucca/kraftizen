@@ -17,8 +17,8 @@ import { Vec3 } from 'vec3';
 import {
   equipBestToolOfType,
   equipRanged,
-  hasWeapon,
   getFood,
+  hasWeapon,
 } from './itemActions';
 import { sendChats } from '../../character/chatLines';
 import TeamMessenger from '../TeamMessenger';
@@ -195,7 +195,7 @@ export default class BehaviorsEngine {
     });
   };
 
-  public findChest = (
+  public findBlock = (
     range = this.range,
     blocks = ['chest', 'barrel'],
     visited: Set<string> = new Set(),
@@ -229,7 +229,7 @@ export default class BehaviorsEngine {
     visited: Set<string> = new Set(),
     range = this.range
   ) => {
-    const chestToOpen = this.findChest(range, blocks, visited);
+    const chestToOpen = this.findBlock(range, blocks, visited);
 
     if (!chestToOpen) return;
 
@@ -416,7 +416,7 @@ export default class BehaviorsEngine {
 
     if (chat) this.bot.chat(`Begone, ${nearestHostile.name ?? 'fiend'}!`);
 
-    await this.moveToEntity(nearestHostile);
+    await this.moveToEntity(nearestHostile, undefined, 3);
 
     if (chat) this.bot.chat('En garde!');
 
@@ -449,11 +449,15 @@ export default class BehaviorsEngine {
     this.setBotGoal(new goals.GoalFollow(player, this.range));
   };
 
-  private moveToEntity = (entity: Entity, range = NEAR_RANGE) => {
+  private moveToEntity = (
+    entity: Entity,
+    deviation = NEAR_RANGE,
+    range?: number
+  ) => {
     try {
       const { x, y, z } = entity.position;
 
-      return this.toCoordinate({ x, y, z }, range);
+      return this.toCoordinate({ x, y, z }, deviation, range);
     } catch {}
   };
 

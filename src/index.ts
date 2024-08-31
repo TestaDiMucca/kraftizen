@@ -1,5 +1,5 @@
 import { performTask } from './utils/actions/performTask';
-import Kraftizen from './utils/Kraftizen';
+import Kraftizen from './Kraftizen';
 import TeamMessenger from './utils/TeamMessenger';
 
 const kraftizenRoster: Kraftizen[] = [];
