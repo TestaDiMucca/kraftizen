@@ -103,8 +103,8 @@ export default class BehaviorsEngine {
       const reached = await this.toCoordinate(bed.position, 0, 1);
 
       if (reached && !this.bot.time.isDay) {
-        this.bot.sleep(bed).catch((e) => {
-          console.error(e);
+        this.bot.sleep(bed).catch((e: Error) => {
+          console.error(e.message);
           if (e.message.includes('monsters')) {
             this.attackNearest(undefined, this.range, undefined, true);
           } else if (e.message.includes('not sleeping')) {
@@ -233,7 +233,7 @@ export default class BehaviorsEngine {
 
     if (!chestToOpen) return;
 
-    await this.toCoordinate(chestToOpen.position, 0, 2);
+    await this.toCoordinate(chestToOpen.position, 0, 1);
 
     return chestToOpen;
   };
@@ -429,9 +429,22 @@ export default class BehaviorsEngine {
     return equipBestToolOfType(this.bot, ['sword', 'axe', 'pickaxe', 'shovel']);
   };
 
-  private attack = (mob: Entity) => {
+  public attack = (mob: Entity) => {
     this.bot.lookAt(mob.position);
     this.bot.attack(mob);
+  };
+
+  public attackWildly = (mob: Entity) => {
+    this.bot.lookAt(mob.position);
+    if (!mob.isValid) return;
+
+    if (this.bot.entity.position.distanceTo(mob.position) > 5) {
+      this.attackNearest(mob, 7);
+      return;
+    }
+    this.attack(mob);
+
+    setTimeout(() => this.attackWildly(mob), 800);
   };
 
   public follow = (username = this.defaultTargetPlayer) => {

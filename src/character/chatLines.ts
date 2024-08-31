@@ -20,6 +20,13 @@ const DEFAULT_LINES: Record<string, string | string[]> = {
     'Have a nice day',
     'What are we doing?',
     'Beyond compare',
+    'Umu umu.',
+  ],
+  farming: [
+    "It's honest work.",
+    'I will watch crops grow.',
+    'Feeding all kraftizens.',
+    'Non-GMO.',
   ],
   hungry: 'I am hungry',
   hurt: 'In pain',

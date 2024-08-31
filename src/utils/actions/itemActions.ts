@@ -128,7 +128,7 @@ export const depositItems = async (
   if (!chest) return;
 
   await sleep(1000);
-  const allItems = getAllHeldItems(kraftizen.bot);
+  const allItems = getAllHeldItems(kraftizen.bot, false);
   const depositList = allItems.filter(
     (item) =>
       !keep.some(

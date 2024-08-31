@@ -44,6 +44,8 @@ export default class Kraftizen {
   rateLimiter = getRateLimiter();
 
   username: string;
+  /** because bot.isSleeping does not seem reliable */
+  sleeping = false;
 
   private defaultMove: Movements;
   private mcData: ReturnType<typeof minecraftData>;
@@ -166,15 +168,33 @@ export default class Kraftizen {
     this.bot.on('wake', () => {
       this.tasks.dropAllTasks();
       this.addTask({ type: Task.return });
+      this.sleeping = false;
     });
 
-    this.bot._client.on('hurt_animation', async (packet, meta) => {
+    this.bot.on('error', (error) => {
+      console.error('bot error', error);
+    });
+
+    this.bot.on('sleep', () => {
+      this.sleeping = true;
+    });
+
+    this.bot._client.on('hurt_animation', async (packet, _meta) => {
       const entity = this.bot.entities[packet.entityId];
 
-      /** Already fighting */
-      if (this.tasks.firstTaskIs(Task.hunt)) return;
-
+      /* I got hurt */
       if (entity.uuid === this.bot.entity.uuid) {
+        // todo: "melee range"
+        const nearby = this.behaviors.getNearestHostileMob(5);
+
+        if (nearby) {
+          this.behaviors.attackWildly(nearby);
+          return;
+        }
+
+        /** Already fighting */
+        if (this.tasks.firstTaskIs(Task.hunt)) return;
+
         this.addTask({ type: Task.hunt });
         if (this.bot.health < 8 && this.rateLimiter.tryCall('demandHelp')) {
           this.addTasks([{ type: Task.return }, { type: Task.eat }]);
@@ -315,6 +335,9 @@ export default class Kraftizen {
         break;
       case 'sleep':
         this.behaviors.goSleep();
+        break;
+      case 'wake':
+        this.bot.wake();
         break;
       case 'block at':
         const block = this.bot.blockAt(this.bot.entity.position, true);

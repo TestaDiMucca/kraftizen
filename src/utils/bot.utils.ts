@@ -12,6 +12,9 @@ export const botPosition = (bot: KraftizenBot): Position => {
   };
 };
 
+/**
+ * Known hostiles sorted by distance from the bot
+ */
 export const getKnownHostileMobs = (bot: KraftizenBot) => {
   return Object.values(bot.entities)
     .filter((entity) => entity.kind === 'Hostile mobs')
@@ -35,7 +38,9 @@ export const checkIfBedIsOccupied = (bot: KraftizenBot, bedBlock) => {
   try {
     const state = bot.blockAt(bedBlock.position);
 
-    if (state && state.stateId && state.stateId === 1695) {
+    const stateProperties = state.getProperties();
+
+    if (state && stateProperties?.occupied === false) {
       return false;
     } else {
       return true;
