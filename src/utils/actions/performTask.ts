@@ -13,15 +13,17 @@ export enum Task {
   findChest = 'find a chest',
   setHome = 'set home',
   deposit = 'deposit',
+  sleep = 'sleep',
 }
 
-type TaskPayloadCommon = { verbose?: boolean };
+type TaskPayloadCommon = { verbose?: boolean; range?: number };
 
 type TaskPayloadByType =
   | {
       type: Task.come;
       username: string;
       oneTime?: boolean;
+      setHome?: boolean;
     }
   | {
       type: Task.findChest;
@@ -49,7 +51,7 @@ type TaskPayloadByType =
       forceMelee?: boolean;
     }
   | {
-      type: Task.return | Task.collect | Task.setHome;
+      type: Task.return | Task.collect | Task.setHome | Task.sleep;
     };
 
 export type TaskPayload = TaskPayloadByType & TaskPayloadCommon;
@@ -58,12 +60,13 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
   const { type } = task;
   const { behaviors, bot } = kraftizen;
 
-  logPrimitives('starting task', task);
+  logPrimitives(bot.username, 'starting task', task);
   try {
     switch (type) {
       case Task.come:
         if (task.oneTime) bot.chat(`Coming, ${task.username}`);
         await behaviors.toPlayer(task.username);
+        if (task.setHome) kraftizen.setHome();
         break;
       case Task.hunt:
         await behaviors.attackNearest(
@@ -95,9 +98,13 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
 
         if (items === 0 && task.verbose) bot.chat('Nothing to collect');
         break;
+      case Task.sleep:
+        kraftizen.removeTasksOfType(Task.sleep);
+        await kraftizen.behaviors.goSleep();
+        break;
       case Task.findChest: {
         const visited = task.visited ?? new Set<string>();
-        const chest = await behaviors.goToChest(undefined, visited);
+        const chest = await behaviors.goToChest(undefined, visited, task.range);
 
         if (chest) {
           if (task.multiple && task.withdraw) {
@@ -142,6 +149,6 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
   } catch (e) {
   } finally {
     kraftizen.finishCurrentTask();
-    console.debug('finishing task', task.type);
+    console.debug(bot.username, 'finishing task', task.type);
   }
 };

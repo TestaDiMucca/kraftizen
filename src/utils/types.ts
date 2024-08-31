@@ -34,6 +34,7 @@ export enum Persona {
   lookout = 'lookout',
   miner = 'miner',
   follower = 'follower',
+  loot = 'loot',
 }
 
 /**

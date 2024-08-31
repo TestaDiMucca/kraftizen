@@ -43,6 +43,8 @@ export default class Kraftizen {
 
   behaviors: BehaviorsEngine;
 
+  username: string;
+
   private defaultMove: Movements;
   private mcData: ReturnType<typeof minecraftData>;
   private messenger: TeamMessenger;
@@ -56,6 +58,7 @@ export default class Kraftizen {
     const { messenger, ...botOpts } = options;
     this.bot = mineflayer.createBot(botOpts);
     this.messenger = messenger;
+    this.username = this.bot.username;
 
     this.setup();
   }
@@ -101,14 +104,17 @@ export default class Kraftizen {
       armorManager,
       hawkeye,
     ]);
+
     this.bot.on('spawn', () => {
       this.mcData = minecraftData(this.bot.version);
       this.defaultMove = getDefaultMovements(this.bot);
+      this.bot.pathfinder.setMovements(this.defaultMove);
 
       this.behaviors = new BehaviorsEngine({
         bot: this.bot,
         defaultMove: this.defaultMove,
         defaultTargetPlayer: null,
+        messenger: this.messenger,
       });
 
       if (!this.homePoint) this.homePoint = botPosition(this.bot);
@@ -143,6 +149,11 @@ export default class Kraftizen {
       else this.bot.autoEat?.enable();
     });
 
+    this.bot.on('wake', () => {
+      this.dropAllTasks();
+      this.addTask({ type: Task.return });
+    });
+
     this.bot._client.on('hurt_animation', async (packet, meta) => {
       const entity = this.bot.entities[packet.entityId];
 
@@ -155,6 +166,7 @@ export default class Kraftizen {
           this.bot.health < 8 &&
           rateLimiter.tryCall('demandHelp', this.bot.username)
         ) {
+          this.addTask({ type: Task.return });
           this.bot.chat('help!');
           this.messageOthers({ message: 'help' });
         }
@@ -162,7 +174,11 @@ export default class Kraftizen {
     });
   };
 
-  private hasTask = (task: Task) => this.taskQueue.find((i) => i.type === task);
+  public removeTasksOfType = (taskType: Task) => {
+    this.taskQueue = this.taskQueue.filter((task) => task.type === taskType);
+  };
+
+  public hasTask = (task: Task) => this.taskQueue.find((i) => i.type === task);
 
   public distanceFromHome = (position?: Position) => {
     return calculateDistance3D(
@@ -218,6 +234,10 @@ export default class Kraftizen {
         sendChat(this.bot, 'guarding');
         this.setPersona(Persona.guard);
         break;
+      case 'loot':
+        sendChat(this.bot, 'loot');
+        this.setPersona(Persona.loot);
+        break;
       case 'home':
         this.setHome();
         break;
@@ -246,8 +266,12 @@ export default class Kraftizen {
         this.taskQueue.unshift({ type: Task.come, username, oneTime: true });
         break;
       case 'camp here':
-        this.taskQueue.unshift({ type: Task.come, username, oneTime: true });
-        this.taskQueue.push({ type: Task.setHome });
+        this.taskQueue.unshift({
+          type: Task.come,
+          username,
+          oneTime: true,
+          setHome: true,
+        });
         break;
       case 'hunt':
         this.taskQueue.unshift({ type: Task.hunt, verbose: true });
@@ -269,6 +293,9 @@ export default class Kraftizen {
         // TODO: improve commanding
         this.behaviors.attackMode = 'melee';
         this.bot.chat('I will attack melee from now on');
+        break;
+      case 'sleep':
+        this.behaviors.goSleep();
         break;
       case 'stock up':
         this.taskQueue.unshift({
