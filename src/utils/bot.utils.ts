@@ -22,6 +22,16 @@ export const getKnownHostileMobs = (bot: KraftizenBot) => {
     });
 };
 
+export const checkIfBedIsOccupied = (bot: KraftizenBot, bedBlock) => {
+  const state = bot.blockAt(bedBlock.position);
+
+  if (state && state.stateId && state.stateId === 1695) {
+    return false;
+  } else {
+    return true;
+  }
+};
+
 export const getNearestHostileMob = (
   bot: KraftizenBot,
   range = 10,
@@ -45,9 +55,13 @@ export const getDefaultMovements = (bot: KraftizenBot) => {
   const movement = new Movements(bot);
 
   movement.canOpenDoors = true;
-  movement.digCost = 10;
+  movement.digCost = 500;
   movement.placeCost = 3;
   movement.allowEntityDetection = true;
+  // movement.canDig = false;
 
   return movement;
 };
+
+export const isNight = (time: number) =>
+  time >= 12542 && time <= 23458 ? true : false;

@@ -18,6 +18,9 @@ const DEFAULT_LINES: Record<string, string | string[]> = {
     'What are we doing?',
     'Beyond compare',
   ],
+  hungry: 'I am hungry',
+  hurt: 'In pain',
+  loot: 'I will watch for items',
 };
 
 type LinesDict = typeof DEFAULT_LINES;

@@ -1,9 +1,9 @@
 import { sendChat } from '../../character/chatLines';
-import { getKnownHostileMobs, personaReturnsHome } from '../bot.utils';
+import { getKnownHostileMobs, isNight, personaReturnsHome } from '../bot.utils';
 import { HOME_RANGE } from '../constants';
 import Kraftizen from '../Kraftizen';
 import { Persona } from '../types';
-import { randomFromArray } from '../utils';
+import { getRandomIntInclusive, randomFromArray } from '../utils';
 import { Task } from './performTask';
 import rateLimiter from '../RateLimiter';
 import { hasWeapon } from './itemActions';
@@ -18,6 +18,11 @@ rateLimiter.setLimitForKey('unarmedGuard', {
   windowMs: 1000 * 60 * 30,
 });
 
+rateLimiter.setLimitForKey('findBed', {
+  max: 1,
+  windowMs: 1000 * 60 * 60 * 10,
+});
+
 /**
  * Queue tasks according to persona
  */
@@ -29,12 +34,21 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
         username: kraftizen.lastCommandFrom,
       });
       break;
+    case Persona.loot:
+      const items = await kraftizen.behaviors.getItems();
+
+      if (items > 0) {
+        kraftizen.addTask({ type: Task.collect });
+        kraftizen.addTask({ type: Task.findChest, deposit: true }, true);
+      }
+      break;
     case Persona.guard:
       const nearbyMobs = getKnownHostileMobs(kraftizen.bot);
 
       if (
         nearbyMobs.length &&
-        kraftizen.distanceFromHome(nearbyMobs[0].position) < HOME_RANGE
+        kraftizen.distanceFromHome(nearbyMobs[0].position) < HOME_RANGE &&
+        !kraftizen.hasTask(Task.hunt)
       ) {
         kraftizen.addTask({
           type: Task.hunt,
@@ -75,6 +89,8 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
 };
 
 const queueStandardTasks = async (kraftizen: Kraftizen) => {
+  const time = kraftizen.bot.time.timeOfDay;
+
   if (Math.random() < 0.1) {
     /* Usually we should get attacked and respond anyway */
     const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
@@ -85,6 +101,18 @@ const queueStandardTasks = async (kraftizen: Kraftizen) => {
         entity: nearbyEnemy,
       });
     }
+  } else if (
+    !kraftizen.bot.time.isDay &&
+    rateLimiter.tryCall('findBed', kraftizen.username) &&
+    !kraftizen.bot.isSleeping
+  ) {
+    setTimeout(
+      () =>
+        kraftizen.addTask({
+          type: Task.sleep,
+        }),
+      getRandomIntInclusive(1, 60) * 1000
+    );
   }
 };
 
@@ -127,5 +155,13 @@ const handleBoredom = (kraftizen: Kraftizen) => {
     });
   }
 
-  sendChat(kraftizen.bot, 'chatter', { chance: 0.5 });
+  sendChat(
+    kraftizen.bot,
+    kraftizen.bot.food < 8
+      ? 'hungry'
+      : kraftizen.bot.health < 8
+      ? 'hurt'
+      : 'chatter',
+    { chance: 0.5 }
+  );
 };

@@ -6,11 +6,16 @@ import {
   posString,
   sleep,
 } from '../utils';
-import { botPosition, getNearestHostileMob } from '../bot.utils';
+import {
+  botPosition,
+  checkIfBedIsOccupied,
+  getNearestHostileMob,
+} from '../bot.utils';
 import { PATH_FINDING_TIMEOUT, RANGE } from '../constants';
 import { Vec3 } from 'vec3';
 import { equipBestToolOfType, equipRanged, hasWeapon } from './itemActions';
 import { sendChats } from '../../character/chatLines';
+import TeamMessenger from '../TeamMessenger';
 
 const NEAR_RANGE = 2;
 const GOAL_POLL_INTERVAL = 500;
@@ -20,6 +25,7 @@ const SHOOT_RANGE = 10;
 type BehaviorsEngineOpts = {
   defaultMove: Movements;
   bot: KraftizenBot;
+  messenger: TeamMessenger;
   defaultTargetPlayer: string | null;
   range?: number;
 };
@@ -32,11 +38,13 @@ export default class BehaviorsEngine {
   defaultTargetPlayer: string | null = null;
   range = RANGE;
   attackMode: AttackMode = 'normal';
+  teamMessenger: TeamMessenger;
 
   constructor(opts: BehaviorsEngineOpts) {
     this.defaultMove = opts.defaultMove;
     this.bot = opts.bot;
     this.defaultTargetPlayer = opts.defaultTargetPlayer;
+    this.teamMessenger = opts.messenger;
   }
 
   private setBotGoal = (goal: goals.Goal) => {
@@ -47,6 +55,39 @@ export default class BehaviorsEngine {
     this.bot.pathfinder.setGoal(goal, true);
   };
 
+  public goSleep = async () => {
+    if (this.bot.isSleeping) return;
+
+    const bed = this.bot.findBlock({
+      matching: (block) => {
+        if (!block) return false;
+
+        return this.bot.isABed(block) && !checkIfBedIsOccupied(this.bot, block);
+      },
+      useExtraInfo: true,
+      maxDistance: 100,
+    });
+
+    if (!bed) return this.bot.chat('No bed nearby...');
+
+    this.teamMessenger.setClaimedItem('bed', posString(bed.position));
+
+    const reached = await this.toCoordinate(bed.position, 0, 1);
+
+    if (reached && !this.bot.time.isDay) {
+      this.bot.sleep(bed).catch((e) => {
+        console.error(e);
+        if (e.message.includes('monsters')) {
+          this.attackNearest(undefined, this.range, undefined, true);
+        }
+      });
+    }
+  };
+
+  /**
+   *
+   * @returns If we reached the goal
+   */
   public toCoordinate = async (
     position: Position,
     /** Randomness in goal */
@@ -79,7 +120,10 @@ export default class BehaviorsEngine {
         let lastPosString: string | null = null;
         let checksInLastPost = 0;
         const posTest = setInterval(() => {
-          if (timeElapsed > GOAL_GIVE_UP_TIME) {
+          if (
+            timeElapsed > GOAL_GIVE_UP_TIME &&
+            !this.bot.pathfinder.isMoving()
+          ) {
             onGoalReached(true);
             return;
           }
@@ -144,9 +188,10 @@ export default class BehaviorsEngine {
 
   public goToChest = async (
     blocks = ['chest', 'barrel'],
-    visited: Set<string> = new Set()
+    visited: Set<string> = new Set(),
+    range = this.range
   ) => {
-    const chestToOpen = this.findChest(this.range, blocks, visited);
+    const chestToOpen = this.findChest(range, blocks, visited);
 
     if (!chestToOpen) return;
 
@@ -204,7 +249,7 @@ export default class BehaviorsEngine {
   };
 
   /** Get nearby items */
-  public getItems = async (onItem: (entity: Entity) => void) => {
+  public getItems = async (onItem?: (entity: Entity) => void) => {
     // TODO: someday communicate across kraftizens if they marked an item to collect
     const drops = Object.values(this.bot.entities)
       .filter((entity) => entity.name === 'item' || entity.name === 'arrow')
@@ -219,7 +264,7 @@ export default class BehaviorsEngine {
         );
       });
 
-    drops.forEach((drop) => onItem(drop));
+    drops.forEach((drop) => onItem?.(drop));
 
     return drops.length;
   };
