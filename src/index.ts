@@ -4,7 +4,7 @@ import TeamMessenger from './utils/TeamMessenger';
 
 const kraftizenRoster: Kraftizen[] = [];
 
-const botNames = ['Kazuma', 'Miko', 'Nakanaka', 'Gilbert'];
+const botNames = ['Kazuma', 'Miko', 'Sein', 'Gilbert'];
 
 const messenger = new TeamMessenger(kraftizenRoster);
 

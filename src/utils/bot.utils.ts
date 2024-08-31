@@ -1,5 +1,6 @@
 import { Movements } from 'mineflayer-pathfinder';
 import { Entity, KraftizenBot, Persona, Position } from './types';
+import { Vec3 } from 'vec3';
 
 export const botPosition = (bot: KraftizenBot): Position => {
   const vec = bot.player.entity.position;
@@ -11,6 +12,9 @@ export const botPosition = (bot: KraftizenBot): Position => {
   };
 };
 
+/**
+ * Known hostiles sorted by distance from the bot
+ */
 export const getKnownHostileMobs = (bot: KraftizenBot) => {
   return Object.values(bot.entities)
     .filter((entity) => entity.kind === 'Hostile mobs')
@@ -22,12 +26,26 @@ export const getKnownHostileMobs = (bot: KraftizenBot) => {
     });
 };
 
-export const checkIfBedIsOccupied = (bot: KraftizenBot, bedBlock) => {
-  const state = bot.blockAt(bedBlock.position);
+export const positionToVec3 = (pos: Position) =>
+  pos instanceof Vec3 ? pos : new Vec3(pos.x, pos.y, pos.z);
 
-  if (state && state.stateId && state.stateId === 1695) {
-    return false;
-  } else {
+export const canSeeCoordinate = (bot: KraftizenBot, position: Position) => {
+  const block = bot.blockAt(positionToVec3(position), true);
+  return bot.canSeeBlock(block);
+};
+
+export const checkIfBedIsOccupied = (bot: KraftizenBot, bedBlock) => {
+  try {
+    const state = bot.blockAt(bedBlock.position);
+
+    const stateProperties = state.getProperties();
+
+    if (state && stateProperties?.occupied === false) {
+      return false;
+    } else {
+      return true;
+    }
+  } catch {
     return true;
   }
 };
@@ -56,10 +74,8 @@ export const getDefaultMovements = (bot: KraftizenBot) => {
 
   movement.canOpenDoors = true;
   movement.digCost = 500;
-  movement.placeCost = 3;
+  movement.placeCost = 30;
   movement.allowEntityDetection = true;
-
-  // movement.canDig = false;
 
   return movement;
 };

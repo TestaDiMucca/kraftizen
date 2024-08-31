@@ -8,6 +8,7 @@ import {
 } from '../utils';
 import {
   botPosition,
+  canSeeCoordinate,
   checkIfBedIsOccupied,
   getNearestHostileMob,
 } from '../bot.utils';
@@ -72,7 +73,6 @@ export default class BehaviorsEngine {
       if (verbose) this.bot.chat('not hungry');
       return;
     }
-    console.log('eat', food);
 
     this.bot.equip(food, 'hand');
     this.bot.activateItem();
@@ -80,32 +80,45 @@ export default class BehaviorsEngine {
     this.bot.deactivateItem();
   };
 
-  public goSleep = async () => {
-    if (this.bot.isSleeping) return;
+  public goSleep = async (triesLeft = 5) => {
+    try {
+      if (this.bot.isSleeping) return;
 
-    const bed = this.bot.findBlock({
-      matching: (block) => {
-        if (!block) return false;
+      const bed = this.bot.findBlock({
+        matching: (block) => {
+          if (!block) return false;
 
-        return this.bot.isABed(block) && !checkIfBedIsOccupied(this.bot, block);
-      },
-      useExtraInfo: true,
-      maxDistance: 100,
-    });
-
-    if (!bed) return this.bot.chat('No bed nearby...');
-
-    this.teamMessenger.setClaimedItem('bed', posString(bed.position));
-
-    const reached = await this.toCoordinate(bed.position, 0, 1);
-
-    if (reached && !this.bot.time.isDay) {
-      this.bot.sleep(bed).catch((e) => {
-        console.error(e);
-        if (e.message.includes('monsters')) {
-          this.attackNearest(undefined, this.range, undefined, true);
-        }
+          return (
+            this.bot.isABed(block) && !checkIfBedIsOccupied(this.bot, block)
+          );
+        },
+        maxDistance: 100,
+        useExtraInfo: true,
       });
+
+      if (!bed) return this.bot.chat('No bed nearby...');
+
+      this.teamMessenger.setClaimedItem('bed', posString(bed.position));
+
+      const reached = await this.toCoordinate(bed.position, 0, 1);
+
+      if (reached && !this.bot.time.isDay) {
+        this.bot.sleep(bed).catch((e: Error) => {
+          console.error(e.message);
+          if (e.message.includes('monsters')) {
+            this.attackNearest(undefined, this.range, undefined, true);
+          } else if (e.message.includes('not sleeping')) {
+            void this.bot.wake().catch(() => {});
+          } else {
+            if (triesLeft > 0)
+              setTimeout(() => {
+                this.goSleep(triesLeft - 1);
+              }, 1000);
+          }
+        });
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -220,7 +233,7 @@ export default class BehaviorsEngine {
 
     if (!chestToOpen) return;
 
-    await this.toCoordinate(chestToOpen.position, 0, 2);
+    await this.toCoordinate(chestToOpen.position, 0, 1);
 
     return chestToOpen;
   };
@@ -290,7 +303,6 @@ export default class BehaviorsEngine {
       });
 
     drops.forEach((drop) => onItem?.(drop));
-
     return drops.length;
   };
 
@@ -306,6 +318,10 @@ export default class BehaviorsEngine {
       botPosition(this.bot),
       target.position
     );
+
+    const canSee = canSeeCoordinate(this.bot, target.position);
+
+    if (!canSee) return 'noBow';
 
     return distance < SHOOT_RANGE
       ? distance < 5
@@ -396,7 +412,7 @@ export default class BehaviorsEngine {
 
     this.bot.lookAt(nearestHostile.position);
 
-    equipBestToolOfType(this.bot, ['sword', 'axe', 'pickaxe', 'shovel']);
+    this.equipMeleeWeapon();
 
     if (chat) this.bot.chat(`Begone, ${nearestHostile.name ?? 'fiend'}!`);
 
@@ -409,9 +425,26 @@ export default class BehaviorsEngine {
     nextLoop();
   };
 
-  private attack = (mob: Entity) => {
+  public equipMeleeWeapon = () => {
+    return equipBestToolOfType(this.bot, ['sword', 'axe', 'pickaxe', 'shovel']);
+  };
+
+  public attack = (mob: Entity) => {
     this.bot.lookAt(mob.position);
     this.bot.attack(mob);
+  };
+
+  public attackWildly = (mob: Entity) => {
+    this.bot.lookAt(mob.position);
+    if (!mob.isValid) return;
+
+    if (this.bot.entity.position.distanceTo(mob.position) > 5) {
+      this.attackNearest(mob, 7);
+      return;
+    }
+    this.attack(mob);
+
+    setTimeout(() => this.attackWildly(mob), 800);
   };
 
   public follow = (username = this.defaultTargetPlayer) => {

@@ -1,12 +1,16 @@
 import { sendChat } from '../../character/chatLines';
-import { getKnownHostileMobs, isNight, personaReturnsHome } from '../bot.utils';
+import { getKnownHostileMobs } from '../bot.utils';
 import { HOME_RANGE } from '../constants';
 import Kraftizen from '../../Kraftizen';
 import { Persona } from '../types';
-import { getRandomIntInclusive, randomFromArray } from '../utils';
 import { Task } from './performTask';
 import { hasWeapon } from './itemActions';
 import { RateLimiterKeys } from '../RateLimiter';
+import { processDecisionModules } from './decisionModules.util';
+import {
+  boredomDecisionModules,
+  defaultTaskDecisionModules,
+} from './decisionModules';
 
 /**
  * Queue tasks according to persona
@@ -72,91 +76,17 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
   queueStandardTasks(kraftizen);
 };
 
-const queueStandardTasks = async (kraftizen: Kraftizen) => {
-  const time = kraftizen.bot.time.timeOfDay;
+const queueStandardTasks = async (kraftizen: Kraftizen) =>
+  processDecisionModules(kraftizen, defaultTaskDecisionModules);
 
-  if (Math.random() < 0.1) {
-    /* Usually we should get attacked and respond anyway */
-    const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
-
-    if (nearbyEnemy && kraftizen.tasks.taskQueue.length <= 1) {
-      kraftizen.addTask({
-        type: Task.hunt,
-        entity: nearbyEnemy,
-      });
-    }
-  } else if (
-    !kraftizen.bot.time.isDay &&
-    kraftizen.rateLimiter.tryCall(
-      RateLimiterKeys.findBed,
-      kraftizen.username
-    ) &&
-    !kraftizen.bot.isSleeping
-  ) {
-    const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
-
-    if (nearbyEnemy && kraftizen.tasks.taskQueue.length <= 1) {
-      kraftizen.addTask({
-        type: Task.hunt,
-        entity: nearbyEnemy,
-      });
-    } else
-      setTimeout(
-        () =>
-          kraftizen.addTask({
-            type: Task.sleep,
-          }),
-        getRandomIntInclusive(1, 60) * 1000
-      );
-  }
-};
-
-const handleBoredom = (kraftizen: Kraftizen) => {
+/**
+ * No assign persona, kraftizen is "bored"
+ */
+const handleBoredom = async (kraftizen: Kraftizen) => {
   /** If you have tasks you are not bored */
   if (!kraftizen.tasks.isEmpty()) return;
 
-  const distanceFromHome = kraftizen.distanceFromHome();
-  /** Bored */
-  if (Math.random() < 0.2) {
-    const nearbyEntity = randomFromArray(Object.values(kraftizen.bot.entities));
-
-    if (nearbyEntity) kraftizen.bot.lookAt(nearbyEntity.position);
-  } else if (
-    Math.random() < 0.1 &&
-    distanceFromHome > 10 &&
-    personaReturnsHome(kraftizen.persona)
-  ) {
-    kraftizen.addTask({ type: Task.return });
-  } else if (
-    Math.random() < 0.05 &&
-    kraftizen.rateLimiter.tryCall(
-      RateLimiterKeys.checkChests,
-      kraftizen.bot.username
-    )
-  ) {
-    const position = kraftizen.bot.entity.position;
-    kraftizen.addTask({
-      type: Task.findBlock,
-      multiple: true,
-      withdraw: true,
-    });
-    kraftizen.addTask(
-      {
-        type: Task.visit,
-        position,
-      },
-      true
-    );
-  } else if (Math.random() < 0.05) {
-    kraftizen.addTask({
-      type: Task.collect,
-    });
-  } else if (Math.random() < 0.05) {
-    kraftizen.addTask({
-      type: Task.findBlock,
-      blockNames: ['bell'],
-    });
-  }
+  await processDecisionModules(kraftizen, boredomDecisionModules);
 
   sendChat(
     kraftizen.bot,
