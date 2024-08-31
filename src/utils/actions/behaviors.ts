@@ -209,11 +209,18 @@ export default class BehaviorsEngine {
       if (specifiedChest) return specifiedChest;
     }
 
-    const allChests = this.bot.findBlocks({
-      matching: blocks.map((name) => this.bot.registry.blocksByName[name].id),
-      maxDistance: range,
-      count: 5,
-    });
+    const allChests = this.bot
+      .findBlocks({
+        matching: blocks.map((name) => this.bot.registry.blocksByName[name].id),
+        maxDistance: range,
+        count: 5,
+      })
+      .sort((chestA, chestB) => {
+        return (
+          chestA.distanceTo(this.bot.entity.position) -
+          chestB.distanceTo(this.bot.entity.position)
+        );
+      });
 
     const filtered = allChests.filter(
       (chest) => !visited.has(posString(chest))

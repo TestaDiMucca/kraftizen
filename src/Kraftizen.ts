@@ -7,7 +7,11 @@ import hawkeye from 'minecrafthawkeye';
 
 import { KraftizenBot, Persona, Position } from './utils/types';
 import { Movements } from 'mineflayer-pathfinder';
-import { botPosition, getDefaultMovements } from './utils/bot.utils';
+import {
+  botPosition,
+  getCardinalDirection,
+  getDefaultMovements,
+} from './utils/bot.utils';
 import { greet } from './utils/actions/greet';
 import {
   calculateDistance3D,
@@ -319,9 +323,25 @@ export default class Kraftizen {
       case 'inventory':
         this.behaviors.listInventory();
         break;
+      case 'objective':
+      case 'directive':
       case 'current task':
         this.bot.chat(
           `My current task is to ${this.tasks.currentTask.type ?? 'idle'}`
+        );
+        break;
+      case 'location':
+      case 'where are you':
+      case 'coordinates':
+        const playerPos = this.bot.players[username]?.entity.position;
+        const botPos = this.bot.entity.position;
+        const baseMessage = `I am at x: ${botPos.x}, y: ${botPos.y}, x: ${botPos.z}`;
+        this.bot.chat(
+          `${baseMessage}${
+            playerPos
+              ? ', to your ' + getCardinalDirection(playerPos, botPos)
+              : ''
+          }`
         );
         break;
       case 'return':

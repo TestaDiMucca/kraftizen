@@ -204,7 +204,9 @@ export const withdrawItems = async (
 
   const typesToWithDraw: Array<{ type: number; count: number; name: string }> =
     [];
+
   allChestItems.forEach((chestItem) => {
+    console.log('checking', chestItem.name);
     toSearch.forEach((itemType) => {
       if (itemMatches(kraftizen.bot, itemType, chestItem)) {
         typesToWithDraw.push({
@@ -212,6 +214,7 @@ export const withdrawItems = async (
           name: chestItem.name,
           count: chestItem.count,
         });
+        console.log('plan to get', itemType, chestItem.name);
         toSearch.delete(itemType);
       }
     });
