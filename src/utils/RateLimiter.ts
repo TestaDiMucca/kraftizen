@@ -17,7 +17,7 @@ class RateLimiter {
   }
 
   /** Check if the request can go through */
-  tryCall(key: string, id?: string): boolean {
+  tryCall(key: RateLimiterKeys | string, id?: string): boolean {
     const options = this.limits.get(key) || this.defaultOptions;
     const now = Date.now();
     const record = this.counts.get(`${key}-${id}`);
@@ -34,7 +34,45 @@ class RateLimiter {
   }
 }
 
+export enum RateLimiterKeys {
+  checkChests = 'checkChests',
+  unarmedGuard = 'unarmedGuard',
+  findBed = 'findBed',
+  demandHelp = 'demandHelp',
+}
+
+/** Global limiter */
 export default new RateLimiter({
   windowMs: 1000 * 60 /* once a min */,
   max: 1,
 });
+
+export const getRateLimiter = () => {
+  const rateLimiter = new RateLimiter({
+    windowMs: 1000 * 60 /* once a min */,
+    max: 1,
+  });
+
+  /* Apply defaults */
+  rateLimiter.setLimitForKey('checkChests', {
+    max: 1,
+    windowMs: 1000 * 60 * 5,
+  });
+
+  rateLimiter.setLimitForKey('unarmedGuard', {
+    max: 1,
+    windowMs: 1000 * 60 * 30,
+  });
+
+  rateLimiter.setLimitForKey('findBed', {
+    max: 1,
+    windowMs: 1000 * 60 * 60 * 10,
+  });
+
+  rateLimiter.setLimitForKey('demandHelp', {
+    max: 1,
+    windowMs: 1000 * 30,
+  });
+
+  return rateLimiter;
+};

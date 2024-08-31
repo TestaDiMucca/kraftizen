@@ -58,6 +58,7 @@ export const getDefaultMovements = (bot: KraftizenBot) => {
   movement.digCost = 500;
   movement.placeCost = 3;
   movement.allowEntityDetection = true;
+
   // movement.canDig = false;
 
   return movement;

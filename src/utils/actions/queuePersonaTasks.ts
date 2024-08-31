@@ -1,27 +1,12 @@
 import { sendChat } from '../../character/chatLines';
 import { getKnownHostileMobs, isNight, personaReturnsHome } from '../bot.utils';
 import { HOME_RANGE } from '../constants';
-import Kraftizen from '../Kraftizen';
+import Kraftizen from '../../Kraftizen';
 import { Persona } from '../types';
 import { getRandomIntInclusive, randomFromArray } from '../utils';
 import { Task } from './performTask';
-import rateLimiter from '../RateLimiter';
 import { hasWeapon } from './itemActions';
-
-rateLimiter.setLimitForKey('checkChests', {
-  max: 1,
-  windowMs: 1000 * 60 * 5,
-});
-
-rateLimiter.setLimitForKey('unarmedGuard', {
-  max: 1,
-  windowMs: 1000 * 60 * 30,
-});
-
-rateLimiter.setLimitForKey('findBed', {
-  max: 1,
-  windowMs: 1000 * 60 * 60 * 10,
-});
+import { RateLimiterKeys } from '../RateLimiter';
 
 /**
  * Queue tasks according to persona
@@ -39,7 +24,7 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
 
       if (items > 0) {
         kraftizen.addTask({ type: Task.collect });
-        kraftizen.addTask({ type: Task.findChest, deposit: true }, true);
+        kraftizen.addTask({ type: Task.findBlock, deposit: true }, true);
       }
       break;
     case Persona.guard:
@@ -48,7 +33,7 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
       if (
         nearbyMobs.length &&
         kraftizen.distanceFromHome(nearbyMobs[0].position) < HOME_RANGE &&
-        !kraftizen.hasTask(Task.hunt)
+        !kraftizen.tasks.hasTask(Task.hunt)
       ) {
         kraftizen.addTask({
           type: Task.hunt,
@@ -68,9 +53,8 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
       }
 
       if (!hasWeapon(kraftizen.bot)) {
-        const complain = rateLimiter.tryCall(
-          'unarmedGuard',
-          kraftizen.bot.username
+        const complain = kraftizen.rateLimiter.tryCall(
+          RateLimiterKeys.unarmedGuard
         );
 
         if (complain)
@@ -95,7 +79,7 @@ const queueStandardTasks = async (kraftizen: Kraftizen) => {
     /* Usually we should get attacked and respond anyway */
     const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
 
-    if (nearbyEnemy && kraftizen.taskQueue.length <= 1) {
+    if (nearbyEnemy && kraftizen.tasks.taskQueue.length <= 1) {
       kraftizen.addTask({
         type: Task.hunt,
         entity: nearbyEnemy,
@@ -103,22 +87,33 @@ const queueStandardTasks = async (kraftizen: Kraftizen) => {
     }
   } else if (
     !kraftizen.bot.time.isDay &&
-    rateLimiter.tryCall('findBed', kraftizen.username) &&
+    kraftizen.rateLimiter.tryCall(
+      RateLimiterKeys.findBed,
+      kraftizen.username
+    ) &&
     !kraftizen.bot.isSleeping
   ) {
-    setTimeout(
-      () =>
-        kraftizen.addTask({
-          type: Task.sleep,
-        }),
-      getRandomIntInclusive(1, 60) * 1000
-    );
+    const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
+
+    if (nearbyEnemy && kraftizen.tasks.taskQueue.length <= 1) {
+      kraftizen.addTask({
+        type: Task.hunt,
+        entity: nearbyEnemy,
+      });
+    } else
+      setTimeout(
+        () =>
+          kraftizen.addTask({
+            type: Task.sleep,
+          }),
+        getRandomIntInclusive(1, 60) * 1000
+      );
   }
 };
 
 const handleBoredom = (kraftizen: Kraftizen) => {
   /** If you have tasks you are not bored */
-  if (kraftizen.taskQueue.length > 0) return;
+  if (!kraftizen.tasks.isEmpty()) return;
 
   const distanceFromHome = kraftizen.distanceFromHome();
   /** Bored */
@@ -134,11 +129,14 @@ const handleBoredom = (kraftizen: Kraftizen) => {
     kraftizen.addTask({ type: Task.return });
   } else if (
     Math.random() < 0.05 &&
-    rateLimiter.tryCall('checkChests', kraftizen.bot.username)
+    kraftizen.rateLimiter.tryCall(
+      RateLimiterKeys.checkChests,
+      kraftizen.bot.username
+    )
   ) {
     const position = kraftizen.bot.entity.position;
     kraftizen.addTask({
-      type: Task.findChest,
+      type: Task.findBlock,
       multiple: true,
       withdraw: true,
     });
@@ -152,6 +150,11 @@ const handleBoredom = (kraftizen: Kraftizen) => {
   } else if (Math.random() < 0.05) {
     kraftizen.addTask({
       type: Task.collect,
+    });
+  } else if (Math.random() < 0.05) {
+    kraftizen.addTask({
+      type: Task.findBlock,
+      blockNames: ['bell'],
     });
   }
 
