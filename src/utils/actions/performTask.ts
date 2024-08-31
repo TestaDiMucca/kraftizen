@@ -1,4 +1,4 @@
-import Kraftizen from '../Kraftizen';
+import Kraftizen from '../../Kraftizen';
 import { ChestItemClass, Entity, Position } from '../types';
 import { logPrimitives, posString } from '../utils';
 import { depositItems, withdrawItems } from './itemActions';
@@ -10,10 +10,11 @@ export enum Task {
   visit = 'visit',
   collect = 'collect',
   withdraw = 'withdraw',
-  findChest = 'find a chest',
+  findBlock = 'find a chest',
   setHome = 'set home',
   deposit = 'deposit',
   sleep = 'sleep',
+  eat = 'eat',
 }
 
 type TaskPayloadCommon = { verbose?: boolean; range?: number };
@@ -26,11 +27,12 @@ type TaskPayloadByType =
       setHome?: boolean;
     }
   | {
-      type: Task.findChest;
+      type: Task.findBlock;
       verbose?: boolean;
       withdraw?: boolean;
       deposit?: boolean;
       multiple?: boolean;
+      blockNames?: string[];
       visited?: Set<string>;
     }
   | {
@@ -51,7 +53,7 @@ type TaskPayloadByType =
       forceMelee?: boolean;
     }
   | {
-      type: Task.return | Task.collect | Task.setHome | Task.sleep;
+      type: Task.return | Task.collect | Task.setHome | Task.sleep | Task.eat;
     };
 
 export type TaskPayload = TaskPayloadByType & TaskPayloadCommon;
@@ -67,6 +69,9 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         if (task.oneTime) bot.chat(`Coming, ${task.username}`);
         await behaviors.toPlayer(task.username);
         if (task.setHome) kraftizen.setHome();
+        break;
+      case Task.eat:
+        await behaviors.eat();
         break;
       case Task.hunt:
         await behaviors.attackNearest(
@@ -99,18 +104,22 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         if (items === 0 && task.verbose) bot.chat('Nothing to collect');
         break;
       case Task.sleep:
-        kraftizen.removeTasksOfType(Task.sleep);
+        kraftizen.tasks.removeTasksOfType(Task.sleep);
         await kraftizen.behaviors.goSleep();
         break;
-      case Task.findChest: {
+      case Task.findBlock: {
         const visited = task.visited ?? new Set<string>();
-        const chest = await behaviors.goToChest(undefined, visited, task.range);
+        const chest = await behaviors.goToChest(
+          task.blockNames ?? ['chest', 'barrel'],
+          visited,
+          task.range
+        );
 
         if (chest) {
           if (task.multiple && task.withdraw) {
             visited.add(posString(chest.position));
             kraftizen.addTask({
-              type: Task.findChest,
+              type: Task.findBlock,
               verbose: task.verbose,
               withdraw: task.withdraw,
               visited,
@@ -148,7 +157,7 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
     }
   } catch (e) {
   } finally {
-    kraftizen.finishCurrentTask();
+    kraftizen.tasks.finishCurrentTask();
     console.debug(bot.username, 'finishing task', task.type);
   }
 };

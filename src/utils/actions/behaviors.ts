@@ -13,7 +13,12 @@ import {
 } from '../bot.utils';
 import { PATH_FINDING_TIMEOUT, RANGE } from '../constants';
 import { Vec3 } from 'vec3';
-import { equipBestToolOfType, equipRanged, hasWeapon } from './itemActions';
+import {
+  equipBestToolOfType,
+  equipRanged,
+  getFood,
+  hasWeapon,
+} from './itemActions';
 import { sendChats } from '../../character/chatLines';
 import TeamMessenger from '../TeamMessenger';
 
@@ -53,6 +58,26 @@ export default class BehaviorsEngine {
     if (!goal) return;
 
     this.bot.pathfinder.setGoal(goal, true);
+  };
+
+  public eat = async (verbose?: boolean) => {
+    const food = await getFood(this.bot);
+
+    if (!food) {
+      if (verbose) this.bot.chat('I have no food');
+      return;
+    }
+
+    if (this.bot.food === 20) {
+      if (verbose) this.bot.chat('not hungry');
+      return;
+    }
+    console.log('eat', food);
+
+    this.bot.equip(food, 'hand');
+    this.bot.activateItem();
+    await sleep(2000);
+    this.bot.deactivateItem();
   };
 
   public goSleep = async () => {
@@ -157,7 +182,7 @@ export default class BehaviorsEngine {
     });
   };
 
-  public findChest = (
+  public findBlock = (
     range = this.range,
     blocks = ['chest', 'barrel'],
     visited: Set<string> = new Set(),
@@ -191,7 +216,7 @@ export default class BehaviorsEngine {
     visited: Set<string> = new Set(),
     range = this.range
   ) => {
-    const chestToOpen = this.findChest(range, blocks, visited);
+    const chestToOpen = this.findBlock(range, blocks, visited);
 
     if (!chestToOpen) return;
 
@@ -375,7 +400,7 @@ export default class BehaviorsEngine {
 
     if (chat) this.bot.chat(`Begone, ${nearestHostile.name ?? 'fiend'}!`);
 
-    await this.moveToEntity(nearestHostile);
+    await this.moveToEntity(nearestHostile, undefined, 3);
 
     if (chat) this.bot.chat('En garde!');
 
@@ -404,11 +429,15 @@ export default class BehaviorsEngine {
     this.setBotGoal(new goals.GoalFollow(player, this.range));
   };
 
-  private moveToEntity = (entity: Entity, range = NEAR_RANGE) => {
+  private moveToEntity = (
+    entity: Entity,
+    deviation = NEAR_RANGE,
+    range?: number
+  ) => {
     try {
       const { x, y, z } = entity.position;
 
-      return this.toCoordinate({ x, y, z }, range);
+      return this.toCoordinate({ x, y, z }, deviation, range);
     } catch {}
   };
 

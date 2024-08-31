@@ -1,4 +1,4 @@
-import Kraftizen from './Kraftizen';
+import Kraftizen from '../Kraftizen';
 import EventEmitter from 'events';
 
 type ItemClaim = 'bed';

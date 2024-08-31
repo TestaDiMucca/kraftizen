@@ -1,4 +1,4 @@
-import Kraftizen from '../Kraftizen';
+import Kraftizen from '../../Kraftizen';
 import { KraftizenBot, Position } from '../types';
 import { sleep } from '../utils';
 
@@ -15,6 +15,8 @@ const searchItems = [
   'crossbow',
   'arrow',
 ];
+
+const keep = ['food', 'arrow'];
 
 const maxWithdraw = 10;
 const maxToWithdrawOverrides: Record<string, number> = {
@@ -34,9 +36,9 @@ const itemMatches = (bot: KraftizenBot, itemType: string, item: Item) => {
   );
 };
 
-const getAllHeldItems = (bot: KraftizenBot) => {
-  return [...bot.entity.equipment, bot.inventory.slots].flatMap((i) =>
-    !!i ? i : []
+const getAllHeldItems = (bot: KraftizenBot, equip: boolean = true) => {
+  return [...(equip ? bot.entity.equipment : []), bot.inventory.slots].flatMap(
+    (i) => (!!i ? i : [])
   );
 };
 
@@ -48,6 +50,11 @@ const equipTiers = [
   'wooden',
   'golden',
 ];
+
+export const getFood = async (bot: KraftizenBot) => {
+  const list = getAllHeldItems(bot);
+  return list.find((item) => itemMatches(bot, 'food', item));
+};
 
 export const equipRanged = async (bot: KraftizenBot) => {
   let matches = bot.inventory
@@ -104,7 +111,7 @@ export const depositItems = async (
   kraftizen: Kraftizen,
   position: Position
 ) => {
-  const nearbyChest = kraftizen.behaviors.findChest(
+  const nearbyChest = kraftizen.behaviors.findBlock(
     rangeToChestOpen,
     undefined,
     undefined,
@@ -123,7 +130,7 @@ export const depositItems = async (
   const allItems = getAllHeldItems(kraftizen.bot);
   const depositList = allItems.filter(
     (item) =>
-      !searchItems.some(
+      !keep.some(
         (itemType) => item && itemMatches(kraftizen.bot, itemType, item)
       )
   );
@@ -151,7 +158,7 @@ export const withdrawItems = async (
   kraftizen: Kraftizen,
   position: Position
 ) => {
-  const nearbyChest = kraftizen.behaviors.findChest(
+  const nearbyChest = kraftizen.behaviors.findBlock(
     rangeToChestOpen,
     undefined,
     undefined,
