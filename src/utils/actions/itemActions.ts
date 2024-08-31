@@ -29,8 +29,9 @@ type Item = KraftizenBot['inventory']['slots'][number];
  */
 const itemMatches = (bot: KraftizenBot, itemType: string, item: Item) => {
   return (
-    item.name.includes(itemType) ||
-    (itemType === 'food' && bot.registry.foodsByName[item.name])
+    item &&
+    (item.name.includes(itemType) ||
+      (itemType === 'food' && bot.registry.foodsByName[item.name]))
   );
 };
 
@@ -49,6 +50,11 @@ const equipTiers = [
   'golden',
 ];
 
+export const getFood = async (bot: KraftizenBot) => {
+  const list = getAllHeldItems(bot);
+  return list.find((item) => item && itemMatches(bot, 'food', item));
+};
+
 export const equipRanged = async (bot: KraftizenBot) => {
   let matches = bot.inventory
     .items()
@@ -65,7 +71,7 @@ export const equipBestToolOfType = (bot: KraftizenBot, toolTypes: string[]) => {
     equipTiers.map((x) => x + '_' + toolType)
   );
 
-  let equipped = false;
+  let equipped: Item | null = null;
   for (let i = tools.length - 1; i >= 0; i--) {
     const tool = tools[i];
 
@@ -74,7 +80,7 @@ export const equipBestToolOfType = (bot: KraftizenBot, toolTypes: string[]) => {
     if (matches.length > 0) {
       bot.equip(matches[0], 'hand');
 
-      equipped = true;
+      equipped = matches[0];
       break;
     }
   }

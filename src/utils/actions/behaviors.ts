@@ -8,12 +8,18 @@ import {
 } from '../utils';
 import {
   botPosition,
+  canSeeCoordinate,
   checkIfBedIsOccupied,
   getNearestHostileMob,
 } from '../bot.utils';
 import { PATH_FINDING_TIMEOUT, RANGE } from '../constants';
 import { Vec3 } from 'vec3';
-import { equipBestToolOfType, equipRanged, hasWeapon } from './itemActions';
+import {
+  equipBestToolOfType,
+  equipRanged,
+  hasWeapon,
+  getFood,
+} from './itemActions';
 import { sendChats } from '../../character/chatLines';
 import TeamMessenger from '../TeamMessenger';
 
@@ -55,32 +61,64 @@ export default class BehaviorsEngine {
     this.bot.pathfinder.setGoal(goal, true);
   };
 
-  public goSleep = async () => {
-    if (this.bot.isSleeping) return;
+  public eat = async (verbose?: boolean) => {
+    const food = await getFood(this.bot);
 
-    const bed = this.bot.findBlock({
-      matching: (block) => {
-        if (!block) return false;
+    if (!food) {
+      if (verbose) this.bot.chat('I have no food');
+      return;
+    }
 
-        return this.bot.isABed(block) && !checkIfBedIsOccupied(this.bot, block);
-      },
-      useExtraInfo: true,
-      maxDistance: 100,
-    });
+    if (this.bot.food === 20) {
+      if (verbose) this.bot.chat('not hungry');
+      return;
+    }
 
-    if (!bed) return this.bot.chat('No bed nearby...');
+    this.bot.equip(food, 'hand');
+    this.bot.activateItem();
+    await sleep(2000);
+    this.bot.deactivateItem();
+  };
 
-    this.teamMessenger.setClaimedItem('bed', posString(bed.position));
+  public goSleep = async (triesLeft = 5) => {
+    try {
+      if (this.bot.isSleeping) return;
 
-    const reached = await this.toCoordinate(bed.position, 0, 1);
+      const bed = this.bot.findBlock({
+        matching: (block) => {
+          if (!block) return false;
 
-    if (reached && !this.bot.time.isDay) {
-      this.bot.sleep(bed).catch((e) => {
-        console.error(e);
-        if (e.message.includes('monsters')) {
-          this.attackNearest(undefined, this.range, undefined, true);
-        }
+          return (
+            this.bot.isABed(block) && !checkIfBedIsOccupied(this.bot, block)
+          );
+        },
+        maxDistance: 100,
+        useExtraInfo: true,
       });
+
+      if (!bed) return this.bot.chat('No bed nearby...');
+
+      this.teamMessenger.setClaimedItem('bed', posString(bed.position));
+
+      const reached = await this.toCoordinate(bed.position, 0, 1);
+
+      if (reached && !this.bot.time.isDay) {
+        this.bot.sleep(bed).catch((e) => {
+          console.error(e);
+          if (e.message.includes('monsters')) {
+            this.attackNearest(undefined, this.range, undefined, true);
+          } else if (e.message.includes('not sleeping')) {
+            void this.bot.wake().catch(() => {});
+          } else {
+            if (triesLeft > 0)
+              setTimeout(() => {
+                this.goSleep(triesLeft - 1);
+              }, 1000);
+          }
+        });
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -265,7 +303,6 @@ export default class BehaviorsEngine {
       });
 
     drops.forEach((drop) => onItem?.(drop));
-
     return drops.length;
   };
 
@@ -281,6 +318,10 @@ export default class BehaviorsEngine {
       botPosition(this.bot),
       target.position
     );
+
+    const canSee = canSeeCoordinate(this.bot, target.position);
+
+    if (!canSee) return 'noBow';
 
     return distance < SHOOT_RANGE
       ? distance < 5
@@ -371,7 +412,7 @@ export default class BehaviorsEngine {
 
     this.bot.lookAt(nearestHostile.position);
 
-    equipBestToolOfType(this.bot, ['sword', 'axe', 'pickaxe', 'shovel']);
+    this.equipMeleeWeapon();
 
     if (chat) this.bot.chat(`Begone, ${nearestHostile.name ?? 'fiend'}!`);
 
@@ -382,6 +423,10 @@ export default class BehaviorsEngine {
     this.attack(nearestHostile);
 
     nextLoop();
+  };
+
+  public equipMeleeWeapon = () => {
+    return equipBestToolOfType(this.bot, ['sword', 'axe', 'pickaxe', 'shovel']);
   };
 
   private attack = (mob: Entity) => {

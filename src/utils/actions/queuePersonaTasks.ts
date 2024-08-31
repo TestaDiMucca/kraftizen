@@ -1,5 +1,5 @@
 import { sendChat } from '../../character/chatLines';
-import { getKnownHostileMobs, isNight, personaReturnsHome } from '../bot.utils';
+import { getKnownHostileMobs, personaReturnsHome } from '../bot.utils';
 import { HOME_RANGE } from '../constants';
 import Kraftizen from '../Kraftizen';
 import { Persona } from '../types';
@@ -106,16 +106,31 @@ const queueStandardTasks = async (kraftizen: Kraftizen) => {
     rateLimiter.tryCall('findBed', kraftizen.username) &&
     !kraftizen.bot.isSleeping
   ) {
-    setTimeout(
-      () =>
-        kraftizen.addTask({
-          type: Task.sleep,
-        }),
-      getRandomIntInclusive(1, 60) * 1000
-    );
+    const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
+
+    if (nearbyEnemy && kraftizen.tasks.taskQueue.length <= 1) {
+      kraftizen.addTask({
+        type: Task.hunt,
+        entity: nearbyEnemy,
+      });
+    } else
+      setTimeout(
+        () =>
+          kraftizen.addTask({
+            type: Task.sleep,
+          }),
+        getRandomIntInclusive(1, 60) * 1000
+      );
+  } else if (kraftizen.bot.food < 10 && Math.random() < 0.5) {
+    kraftizen.addTask({
+      type: Task.eat,
+    });
   }
 };
 
+/**
+ * No assign persona, kraftizen is "bored"
+ */
 const handleBoredom = (kraftizen: Kraftizen) => {
   /** If you have tasks you are not bored */
   if (kraftizen.taskQueue.length > 0) return;

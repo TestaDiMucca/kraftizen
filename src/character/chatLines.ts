@@ -9,6 +9,9 @@ const DEFAULT_LINES: Record<string, string | string[]> = {
     'Standing guard',
     'Protecting area',
     'Annihilate them!',
+    'Smite them to smithereens!',
+    'Take no prisoners',
+    'The battlefield awaits.',
   ],
   chatter: [
     'I am so busy',

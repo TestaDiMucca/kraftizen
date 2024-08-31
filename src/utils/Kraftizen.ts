@@ -241,6 +241,15 @@ export default class Kraftizen {
       case 'home':
         this.setHome();
         break;
+      case 'arms':
+        const arms = this.behaviors.equipMeleeWeapon();
+
+        if (arms) {
+          this.bot.chat(`I have my ${arms.displayName}`);
+        } else {
+          this.bot.chat('I have no weapons');
+        }
+        break;
       case 'relax':
       case 'chill':
         sendChat(this.bot, 'relaxing');
@@ -297,6 +306,11 @@ export default class Kraftizen {
       case 'sleep':
         this.behaviors.goSleep();
         break;
+      case 'block at':
+        const block = this.bot.blockAt(this.bot.entity.position, true);
+        console.log(block, this.bot.canSeeBlock(block));
+        break;
+      case 'withdraw':
       case 'stock up':
         this.taskQueue.unshift({
           type: Task.findChest,
