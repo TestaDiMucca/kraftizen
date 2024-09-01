@@ -445,6 +445,8 @@ export default class BehaviorsEngine {
    * A rapid melee attack sequence with less checks
    */
   public attackWildly = (mob: Entity) => {
+    this.equipMeleeWeapon();
+
     this.bot.lookAt(mob.position);
     if (!mob.isValid) return;
 
