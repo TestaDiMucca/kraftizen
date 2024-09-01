@@ -1,4 +1,5 @@
 import { goals, Movements } from 'mineflayer-pathfinder';
+import { Vec3 } from 'vec3';
 import { Entity, KraftizenBot, Position } from '../utils/types';
 import {
   calculateDistance3D,
@@ -12,8 +13,14 @@ import {
   checkIfBedIsOccupied,
   getNearestHostileMob,
 } from '../utils/bot.utils';
-import { MELEE_RANGE, PATH_FINDING_TIMEOUT, RANGE } from '../utils/constants';
-import { Vec3 } from 'vec3';
+import {
+  GOAL_POLL_INTERVAL,
+  MELEE_RANGE,
+  NEAR_RANGE,
+  PATH_FINDING_TIMEOUT,
+  RANGE,
+  SHOOT_RANGE,
+} from '../utils/constants';
 import {
   equipBestToolOfType,
   equipRanged,
@@ -22,11 +29,6 @@ import {
 } from './itemActions';
 import { ChatKeys, sendChat, sendChats } from '../character/chatLines';
 import TeamMessenger from '../utils/TeamMessenger';
-
-const NEAR_RANGE = 2;
-const GOAL_POLL_INTERVAL = 500;
-const GOAL_GIVE_UP_TIME = PATH_FINDING_TIMEOUT;
-const SHOOT_RANGE = 10;
 
 type BehaviorsEngineOpts = {
   defaultMove: Movements;
@@ -159,7 +161,7 @@ export default class BehaviorsEngine {
         let checksInLastPost = 0;
         const posTest = setInterval(() => {
           if (
-            timeElapsed > GOAL_GIVE_UP_TIME &&
+            timeElapsed > PATH_FINDING_TIMEOUT &&
             !this.bot.pathfinder.isMoving()
           ) {
             onGoalReached(true);

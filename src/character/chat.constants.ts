@@ -9,5 +9,51 @@ export enum ChatKeys {
   hurt = 'hurt',
   loot = 'loot',
   melee = 'melee',
+  error = 'error',
+  cancelChoice = 'cancelChoice',
   nonLoSo = 'nonLoSo',
 }
+
+export const DEFAULT_LINES: Record<ChatKeys, string | string[]> = {
+  [ChatKeys.returning]: ['I will return', 'Going home'],
+  [ChatKeys.relaxing]: [
+    'I will do nothing now',
+    'Clocking off',
+    'Stopping work',
+  ],
+  [ChatKeys.guarding]: [
+    'Eliminate all threats!',
+    'Standing guard',
+    'Protecting area',
+    'Annihilate them!',
+    'Smite them to smithereens!',
+    'Take no prisoners',
+    'The battlefield awaits.',
+  ],
+  [ChatKeys.chatter]: [
+    'I am so busy',
+    'What even is life?',
+    'Need recharge',
+    'Have a nice day',
+    'What are we doing?',
+    'Beyond compare',
+    'Umu umu.',
+    'Wolves hunt in backs',
+    'Goblins ill like fire',
+  ],
+  [ChatKeys.farming]: [
+    "It's honest work.",
+    'I will watch crops grow.',
+    'Feeding all kraftizens.',
+    'Non-GMO.',
+  ],
+  [ChatKeys.hungry]: 'I am hungry',
+  [ChatKeys.hurt]: 'In pain',
+  [ChatKeys.loot]: 'I will watch for items',
+  [ChatKeys.melee]: 'Close quarters only',
+  [ChatKeys.nonLoSo]:
+    'I do not understand "%command%". Read the manual, peasant.',
+  [ChatKeys.follow]: 'I will follow %username%',
+  [ChatKeys.error]: ['Something went wrong', 'I brain farted'],
+  [ChatKeys.cancelChoice]: 'I will do something else, then, Or nothing.',
+};
