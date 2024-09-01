@@ -1,4 +1,4 @@
-import { performTask } from './utils/actions/performTask';
+import { performTask } from './actions/performTask';
 import Kraftizen from './Kraftizen';
 import TeamMessenger from './utils/TeamMessenger';
 

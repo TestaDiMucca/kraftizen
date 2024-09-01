@@ -23,6 +23,8 @@ export type Position = {
  * Generic entity attached to all things in game
  */
 export type Entity = mineflayer.Bot['entity'];
+export type Block = ReturnType<mineflayer.Bot['blockAt']>;
+export type Item = KraftizenBot['inventory']['slots'][number];
 
 export enum KraftizenState {}
 

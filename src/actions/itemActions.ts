@@ -1,6 +1,6 @@
-import Kraftizen from '../../Kraftizen';
-import { KraftizenBot, Position } from '../types';
-import { sleep } from '../utils';
+import Kraftizen from '../Kraftizen';
+import { Item, KraftizenBot, Position } from '../utils/types';
+import { sleep } from '../utils/utils';
 
 const searchItems = [
   'food',
@@ -23,8 +23,6 @@ const maxToWithdrawOverrides: Record<string, number> = {
   arrow: 64,
 };
 const rangeToChestOpen = 3;
-
-type Item = KraftizenBot['inventory']['slots'][number];
 
 /**
  * If an item matches a given category that the bot "should" have
@@ -56,6 +54,9 @@ export const getFood = async (bot: KraftizenBot) => {
   const list = getAllHeldItems(bot);
   return list.find((item) => item && itemMatches(bot, 'food', item));
 };
+
+export const getItemInInventory = (bot: KraftizenBot, itemName: string) =>
+  bot.inventory.items().find((item) => item.name === itemName);
 
 export const equipRanged = async (bot: KraftizenBot) => {
   let matches = bot.inventory
@@ -157,7 +158,8 @@ export const depositItems = async (
 
 export const withdrawItems = async (
   kraftizen: Kraftizen,
-  position: Position
+  position: Position,
+  items?: string[]
 ) => {
   const nearbyChest = kraftizen.behaviors.findBlock(
     rangeToChestOpen,
@@ -206,7 +208,6 @@ export const withdrawItems = async (
     [];
 
   allChestItems.forEach((chestItem) => {
-    console.log('checking', chestItem.name);
     toSearch.forEach((itemType) => {
       if (itemMatches(kraftizen.bot, itemType, chestItem)) {
         typesToWithDraw.push({
@@ -214,7 +215,6 @@ export const withdrawItems = async (
           name: chestItem.name,
           count: chestItem.count,
         });
-        console.log('plan to get', itemType, chestItem.name);
         toSearch.delete(itemType);
       }
     });

@@ -1,6 +1,6 @@
-import Kraftizen from '../../Kraftizen';
-import { ChestItemClass, Entity, Position } from '../types';
-import { logPrimitives, posString } from '../utils';
+import Kraftizen from '../Kraftizen';
+import { ChestItemClass, Entity, Position } from '../utils/types';
+import { logPrimitives, posString } from '../utils/utils';
 import { depositItems, withdrawItems } from './itemActions';
 
 export enum Task {
@@ -15,6 +15,7 @@ export enum Task {
   deposit = 'deposit',
   sleep = 'sleep',
   eat = 'eat',
+  personaTask = 'personaTask',
 }
 
 type TaskPayloadCommon = { verbose?: boolean; range?: number };
@@ -29,7 +30,7 @@ type TaskPayloadByType =
   | {
       type: Task.findBlock;
       verbose?: boolean;
-      withdraw?: boolean;
+      withdraw?: boolean | string[];
       deposit?: boolean;
       multiple?: boolean;
       blockNames?: string[];
@@ -37,7 +38,7 @@ type TaskPayloadByType =
     }
   | {
       type: Task.withdraw;
-      itemClass?: ChestItemClass;
+      items?: string[];
       verbose?: boolean;
       position?: Position;
     }
@@ -54,6 +55,10 @@ type TaskPayloadByType =
     }
   | {
       type: Task.return | Task.collect | Task.setHome | Task.sleep | Task.eat;
+    }
+  | {
+      type: Task.personaTask;
+      description: string;
     };
 
 export type TaskPayload = TaskPayloadByType & TaskPayloadCommon;
@@ -130,6 +135,11 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
               type: Task.withdraw,
               verbose: task.verbose,
               position: chest.position,
+              ...(Array.isArray(task.withdraw)
+                ? {
+                    items: task.withdraw,
+                  }
+                : {}),
             });
 
           if (task.deposit)
@@ -147,7 +157,11 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         if (task.verbose) bot.chat(`I stored ${depositCount} items`);
         break;
       case Task.withdraw:
-        const withdrawCount = await withdrawItems(kraftizen, task.position);
+        const withdrawCount = await withdrawItems(
+          kraftizen,
+          task.position,
+          task.items
+        );
         if (task.verbose) bot.chat(`I got ${withdrawCount} items`);
         break;
       case Task.setHome:

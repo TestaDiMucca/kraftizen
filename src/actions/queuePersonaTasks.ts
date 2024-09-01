@@ -1,13 +1,14 @@
-import { sendChat } from '../../character/chatLines';
-import { getKnownHostileMobs } from '../bot.utils';
-import { HOME_RANGE } from '../constants';
-import Kraftizen from '../../Kraftizen';
-import { Persona } from '../types';
+import { sendChat } from '../character/chatLines';
+import { getKnownHostileMobs } from '../utils/bot.utils';
+import { HOME_RANGE } from '../utils/constants';
+import Kraftizen from '../Kraftizen';
+import { Persona } from '../utils/types';
 import { Task } from './performTask';
 import { hasWeapon } from './itemActions';
-import { RateLimiterKeys } from '../RateLimiter';
+import { RateLimiterKeys } from '../utils/RateLimiter';
 import { processDecisionModules } from './decisionModules.util';
 import {
+  allDecisionModules,
   boredomDecisionModules,
   defaultTaskDecisionModules,
 } from './decisionModules';
@@ -31,6 +32,15 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
         kraftizen.addTask({ type: Task.findBlock, deposit: true }, true);
       }
       break;
+    case Persona.farmer:
+      await processDecisionModules(kraftizen, [
+        allDecisionModules.harvestField,
+        allDecisionModules.sowField,
+        allDecisionModules.collectItems,
+        allDecisionModules.depositItems,
+        allDecisionModules.visitBlock('composter'),
+      ]);
+      break;
     case Persona.guard:
       const nearbyMobs = getKnownHostileMobs(kraftizen.bot);
 
@@ -39,10 +49,7 @@ export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
         kraftizen.distanceFromHome(nearbyMobs[0].position) < HOME_RANGE &&
         !kraftizen.tasks.hasTask(Task.hunt)
       ) {
-        kraftizen.addTask({
-          type: Task.hunt,
-          entity: nearbyMobs[0],
-        });
+        await kraftizen.behaviors.attackNearest(nearbyMobs[0]);
       } else {
         // nothing to hunt
         const farFromHome = kraftizen.distanceFromHome() > 10;

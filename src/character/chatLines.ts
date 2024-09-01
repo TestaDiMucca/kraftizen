@@ -21,6 +21,8 @@ const DEFAULT_LINES: Record<string, string | string[]> = {
     'What are we doing?',
     'Beyond compare',
     'Umu umu.',
+    'Wolves hunt in backs',
+    'Goblins ill like fire',
   ],
   farming: [
     "It's honest work.",
@@ -31,6 +33,8 @@ const DEFAULT_LINES: Record<string, string | string[]> = {
   hungry: 'I am hungry',
   hurt: 'In pain',
   loot: 'I will watch for items',
+  melee: 'Close quarters only',
+  nonLoSo: 'I do not understand "%command%". Read the manual, peasant.',
 };
 
 type LinesDict = typeof DEFAULT_LINES;
@@ -71,6 +75,9 @@ export const sendChat = (
   bot.chat(modifiedMessage);
 };
 
+/**
+ * Bulk send chats automatically, spacing them out a bit
+ */
 export const sendChats = (
   bot: KraftizenBot,
   messagesOrKey: Array<keyof LinesDict | string>,
