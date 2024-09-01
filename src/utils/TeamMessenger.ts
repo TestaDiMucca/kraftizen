@@ -4,18 +4,18 @@ import EventEmitter from 'events';
 type ItemClaim = 'bed';
 
 export default class TeamMessenger {
-  teamMembers: Kraftizen[] = [];
+  teamMembers: Record<string, Kraftizen> = {};
   emitter = new EventEmitter();
   claims = new Map<string, Set<string>>();
 
-  constructor(teamMembers: Kraftizen[]) {
+  constructor(teamMembers: Record<string, Kraftizen>) {
     this.teamMembers = teamMembers;
   }
 
   public messageTeam = (message: TeamMessage) => {
     // Todo: this is a function call because we can, but maybe leverage actual events
     setImmediate(() => {
-      this.teamMembers
+      Object.values(this.teamMembers)
         .filter(
           (kraftizen) => kraftizen.bot.username !== message.sender.bot.username
         )

@@ -26,6 +26,12 @@ import { sendChat } from './character/chatLines';
 import TeamMessenger, { TeamMessage } from './utils/TeamMessenger';
 import { getRateLimiter } from './utils/RateLimiter';
 import QueueManager from './utils/QueueManager';
+import { botManagerEvents, EventTypes } from './utils/events';
+
+export type KraftizenOptions = mineflayer.BotOptions & {
+  messenger: TeamMessenger;
+  onErrored?: () => void;
+};
 
 export default class Kraftizen {
   /** Reference to the core bot brain */
@@ -56,7 +62,7 @@ export default class Kraftizen {
   private messenger: TeamMessenger;
 
   constructor(
-    options: mineflayer.BotOptions & { messenger: TeamMessenger },
+    options: KraftizenOptions,
     private taskRunner: typeof performTask
   ) {
     const { messenger, ...botOpts } = options;
@@ -177,6 +183,10 @@ export default class Kraftizen {
 
     this.bot.on('error', (error) => {
       console.error('bot error', error);
+      botManagerEvents.emit(EventTypes.botError, {
+        botName: this.bot.username,
+        error,
+      });
     });
 
     this.bot.on('sleep', () => {
@@ -221,6 +231,10 @@ export default class Kraftizen {
   public setHome = () => {
     this.bot.chat('I will stay around here');
     this.homePoint = botPosition(this.bot);
+  };
+
+  public shutDown = () => {
+    this.bot.quit();
   };
 
   private setPersona = (persona: Persona) => {
