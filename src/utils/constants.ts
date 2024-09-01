@@ -6,3 +6,12 @@ export const HOME_RANGE = 100;
 
 /** How long before giving up on path finding */
 export const PATH_FINDING_TIMEOUT = 10 * 1000;
+
+export const DEFAULT_NAMES = [
+  'Kazuma',
+  'Miko',
+  'Sein',
+  'Gilbert',
+  'Caesar',
+  'Kaguya',
+];

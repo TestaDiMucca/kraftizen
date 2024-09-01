@@ -1,0 +1,44 @@
+{
+  "default": {
+    "returning": [
+      "I will return",
+      "Going home"
+    ],
+    "relaxing": [
+      "I will do nothing now",
+      "Clocking off",
+      "Stopping work"
+    ],
+    "guarding": [
+      "Eliminate all threats!",
+      "Standing guard",
+      "Protecting area",
+      "Annihilate them!",
+      "Smite them to smithereens!",
+      "Take no prisoners",
+      "The battlefield awaits."
+    ],
+    "chatter": [
+      "I am so busy",
+      "What even is life?",
+      "Need recharge",
+      "Have a nice day",
+      "What are we doing?",
+      "Beyond compare",
+      "Umu umu.",
+      "Wolves hunt in backs",
+      "Goblins ill like fire"
+    ],
+    "farming": [
+      "It's honest work.",
+      "I will watch crops grow.",
+      "Feeding all kraftizens.",
+      "Non-GMO."
+    ],
+    "hungry": "I am hungry",
+    "hurt": "In pain",
+    "loot": "I will watch for items",
+    "melee": "Close quarters only",
+    "nonLoSo": "I do not understand \"%command%\". Read the manual, peasant."
+  }
+}
