@@ -4,6 +4,7 @@ export enum ChatKeys {
   guarding = 'guarding',
   chatter = 'chatter',
   farming = 'farming',
+  follow = 'follow',
   hungry = 'hungry',
   hurt = 'hurt',
   loot = 'loot',

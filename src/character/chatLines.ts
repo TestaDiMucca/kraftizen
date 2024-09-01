@@ -48,6 +48,7 @@ const DEFAULT_LINES: Record<ChatKeys, string | string[]> = {
   [ChatKeys.melee]: 'Close quarters only',
   [ChatKeys.nonLoSo]:
     'I do not understand "%command%". Read the manual, peasant.',
+  [ChatKeys.follow]: 'I will follow %username%',
 };
 
 type LinesDict = typeof DEFAULT_LINES;

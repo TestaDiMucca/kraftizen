@@ -15,3 +15,15 @@ export const DEFAULT_NAMES = [
   'Caesar',
   'Kaguya',
 ];
+
+/** How near to a chest to open it */
+export const RANGE_CHEST_OPEN = 2;
+
+/** Never take more of this count from chest unless otherwise specified */
+export const MAX_WITHDRAW = 10;
+
+/** How near to start melee attacking */
+export const MELEE_RANGE = 4;
+
+/** Auto withdraw if less slots free than this */
+export const INVENTORY_SLOTS_ALLOWED = 4;

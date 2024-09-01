@@ -1,4 +1,5 @@
 import Kraftizen from '../Kraftizen';
+import { MAX_WITHDRAW, RANGE_CHEST_OPEN } from '../utils/constants';
 import { Item, KraftizenBot, Position } from '../utils/types';
 import { sleep } from '../utils/utils';
 
@@ -18,11 +19,9 @@ const searchItems = [
 
 const keep = ['food', 'arrow'];
 
-const maxWithdraw = 10;
 const maxToWithdrawOverrides: Record<string, number> = {
   arrow: 64,
 };
-const rangeToChestOpen = 3;
 
 /**
  * If an item matches a given category that the bot "should" have
@@ -114,7 +113,7 @@ export const depositItems = async (
   position: Position
 ) => {
   const nearbyChest = kraftizen.behaviors.findBlock(
-    rangeToChestOpen,
+    RANGE_CHEST_OPEN,
     undefined,
     undefined,
     position
@@ -162,7 +161,7 @@ export const withdrawItems = async (
   items?: string[]
 ) => {
   const nearbyChest = kraftizen.behaviors.findBlock(
-    rangeToChestOpen,
+    RANGE_CHEST_OPEN,
     undefined,
     undefined,
     position
@@ -228,7 +227,7 @@ export const withdrawItems = async (
       await chest.withdraw(
         type,
         null,
-        Math.min(count, maxToWithdrawOverrides[name] ?? maxWithdraw)
+        Math.min(count, maxToWithdrawOverrides[name] ?? MAX_WITHDRAW)
       );
       withdrawCount++;
     } catch (e) {

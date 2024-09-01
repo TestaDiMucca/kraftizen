@@ -27,6 +27,7 @@ import TeamMessenger, { TeamMessage } from './utils/TeamMessenger';
 import { getRateLimiter } from './utils/RateLimiter';
 import QueueManager from './utils/QueueManager';
 import { botManagerEvents, EventTypes } from './utils/events';
+import { INVENTORY_SLOTS_ALLOWED, MELEE_RANGE } from './utils/constants';
 
 export type KraftizenOptions = mineflayer.BotOptions & {
   messenger: TeamMessenger;
@@ -140,7 +141,7 @@ export default class Kraftizen {
       if (collector.uuid === this.bot.entity.uuid) {
         const slotsEmpty = this.bot.inventory.emptySlotCount();
         // todo: const
-        if (slotsEmpty < 4)
+        if (slotsEmpty < INVENTORY_SLOTS_ALLOWED)
           this.addTask({ type: Task.findBlock, deposit: true });
       }
     });
@@ -200,10 +201,9 @@ export default class Kraftizen {
 
       /* I got hurt */
       if (entity.uuid === this.bot.entity.uuid) {
-        // todo: "melee range"
-        const nearby = this.behaviors.getNearestHostileMob(5);
+        const nearby = this.behaviors.getNearestHostileMob(MELEE_RANGE);
 
-        if (nearby) {
+        if (nearby && !this.bot.usingHeldItem) {
           this.behaviors.attackWildly(nearby);
           return;
         }
