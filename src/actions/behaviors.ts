@@ -1,18 +1,18 @@
 import { goals, Movements } from 'mineflayer-pathfinder';
-import { Entity, KraftizenBot, Position } from '../types';
+import { Entity, KraftizenBot, Position } from '../utils/types';
 import {
   calculateDistance3D,
   getRandomIntInclusive,
   posString,
   sleep,
-} from '../utils';
+} from '../utils/utils';
 import {
   botPosition,
   canSeeCoordinate,
   checkIfBedIsOccupied,
   getNearestHostileMob,
-} from '../bot.utils';
-import { PATH_FINDING_TIMEOUT, RANGE } from '../constants';
+} from '../utils/bot.utils';
+import { PATH_FINDING_TIMEOUT, RANGE } from '../utils/constants';
 import { Vec3 } from 'vec3';
 import {
   equipBestToolOfType,
@@ -20,8 +20,8 @@ import {
   getFood,
   hasWeapon,
 } from './itemActions';
-import { sendChats } from '../../character/chatLines';
-import TeamMessenger from '../TeamMessenger';
+import { sendChats } from '../character/chatLines';
+import TeamMessenger from '../utils/TeamMessenger';
 
 const NEAR_RANGE = 2;
 const GOAL_POLL_INTERVAL = 500;
@@ -209,11 +209,18 @@ export default class BehaviorsEngine {
       if (specifiedChest) return specifiedChest;
     }
 
-    const allChests = this.bot.findBlocks({
-      matching: blocks.map((name) => this.bot.registry.blocksByName[name].id),
-      maxDistance: range,
-      count: 5,
-    });
+    const allChests = this.bot
+      .findBlocks({
+        matching: blocks.map((name) => this.bot.registry.blocksByName[name].id),
+        maxDistance: range,
+        count: 5,
+      })
+      .sort((chestA, chestB) => {
+        return (
+          chestA.distanceTo(this.bot.entity.position) -
+          chestB.distanceTo(this.bot.entity.position)
+        );
+      });
 
     const filtered = allChests.filter(
       (chest) => !visited.has(posString(chest))
@@ -384,6 +391,7 @@ export default class BehaviorsEngine {
 
     if (!nearestHostile) {
       if (chat) this.bot.chat('Looks like nothing nearby');
+      console.log('no hostile');
       return;
     }
 
@@ -392,6 +400,7 @@ export default class BehaviorsEngine {
       : this.canShootWithBow(nearestHostile);
 
     const nextLoop = () => {
+      console.log('next loop');
       if (nearestHostile.isValid)
         setTimeout(() => this.attackNearest(nearestHostile), 500);
       else {
@@ -416,7 +425,9 @@ export default class BehaviorsEngine {
 
     if (chat) this.bot.chat(`Begone, ${nearestHostile.name ?? 'fiend'}!`);
 
+    console.log('move to');
     await this.moveToEntity(nearestHostile, undefined, 3);
+    console.log('attack');
 
     if (chat) this.bot.chat('En garde!');
 
@@ -435,6 +446,7 @@ export default class BehaviorsEngine {
   };
 
   public attackWildly = (mob: Entity) => {
+    if (this.bot.usingHeldItem) return;
     this.bot.lookAt(mob.position);
     if (!mob.isValid) return;
 

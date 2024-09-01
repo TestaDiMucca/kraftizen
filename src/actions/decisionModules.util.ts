@@ -1,4 +1,6 @@
-import Kraftizen from '../../Kraftizen';
+import Kraftizen from '../Kraftizen';
+import { Block, Item, Position } from '../utils/types';
+import { Task } from './performTask';
 
 /**
  * Decision modules are little tasks that kraftizens can decide to do
@@ -15,15 +17,34 @@ export type DecisionModule = {
   continue?: boolean;
 } & ({} | {});
 
+export type DecisionModuleFactory = (...args: any[]) => DecisionModule;
+
 type Context = {
   kraftizen: Kraftizen;
   distanceFromHome: number;
+  targetPos?: Position;
+  targetBlock?: Block;
+  targetItem?: Item;
 };
+
+/**
+ * Temp keys are references stored in the criteria test and passed to action
+ * We should remove them for the next round of actions.
+ */
+const tempKeys: Array<keyof Context> = [
+  'targetBlock',
+  'targetItem',
+  'targetPos',
+];
 
 /**
  * Decision modules are evaluated in sequence so it is important to
  * input by priority, and make sure there are conditions where if a module
  * is not run, chance or criteria should allow it to fall through
+ *
+ * Sometimes tasks are run inline here instead of spawning an async task for the task queue
+ * A decision to be made is if they should all be migrated to async task. The queue can bloat,
+ * so likely we'll keep putting async type tasks there, else the bot may never do its job function
  */
 export const processDecisionModules = async (
   kraftizen: Kraftizen,
@@ -41,8 +62,17 @@ export const processDecisionModules = async (
     const criteriaGate = dm.criteria ? await dm.criteria(context) : true;
 
     if (chanceGate && criteriaGate) {
+      kraftizen.tasks.currentTask = {
+        type: Task.personaTask,
+        description: dm.name,
+      };
       await dm.action(context);
+      kraftizen.tasks.currentTask = null;
       if (!dm.continue) break;
     }
+
+    tempKeys.forEach((key) => {
+      if (context[key]) delete context[key];
+    });
   }
 };

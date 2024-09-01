@@ -34,6 +34,31 @@ export const canSeeCoordinate = (bot: KraftizenBot, position: Position) => {
   return bot.canSeeBlock(block);
 };
 
+export const getCardinalDirection = (from: Position, to: Position): string => {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+
+  if (dx === 0 && dz === 0) {
+    return 'You are at the same location.';
+  }
+
+  const directions = [];
+
+  if (dz > 0) {
+    directions.push('south');
+  } else if (dz < 0) {
+    directions.push('north');
+  }
+
+  if (dx > 0) {
+    directions.push('east');
+  } else if (dx < 0) {
+    directions.push('west');
+  }
+
+  return directions.join('');
+};
+
 export const checkIfBedIsOccupied = (bot: KraftizenBot, bedBlock) => {
   try {
     const state = bot.blockAt(bedBlock.position);

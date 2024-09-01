@@ -7,21 +7,31 @@ import hawkeye from 'minecrafthawkeye';
 
 import { KraftizenBot, Persona, Position } from './utils/types';
 import { Movements } from 'mineflayer-pathfinder';
-import { botPosition, getDefaultMovements } from './utils/bot.utils';
-import { greet } from './utils/actions/greet';
+import {
+  botPosition,
+  getCardinalDirection,
+  getDefaultMovements,
+} from './utils/bot.utils';
+import { greet } from './actions/greet';
 import {
   calculateDistance3D,
   getRandomIntInclusive,
   sleep,
 } from './utils/utils';
-import BehaviorsEngine from './utils/actions/behaviors';
-import { Task, TaskPayload } from './utils/actions/performTask';
-import { performTask } from './utils/actions/performTask';
-import { queuePersonaTasks } from './utils/actions/queuePersonaTasks';
+import BehaviorsEngine from './actions/behaviors';
+import { Task, TaskPayload } from './actions/performTask';
+import { performTask } from './actions/performTask';
+import { queuePersonaTasks } from './actions/queuePersonaTasks';
 import { sendChat } from './character/chatLines';
 import TeamMessenger, { TeamMessage } from './utils/TeamMessenger';
 import { getRateLimiter } from './utils/RateLimiter';
 import QueueManager from './utils/QueueManager';
+import { botManagerEvents, EventTypes } from './utils/events';
+
+export type KraftizenOptions = mineflayer.BotOptions & {
+  messenger: TeamMessenger;
+  onErrored?: () => void;
+};
 
 export default class Kraftizen {
   /** Reference to the core bot brain */
@@ -52,7 +62,7 @@ export default class Kraftizen {
   private messenger: TeamMessenger;
 
   constructor(
-    options: mineflayer.BotOptions & { messenger: TeamMessenger },
+    options: KraftizenOptions,
     private taskRunner: typeof performTask
   ) {
     const { messenger, ...botOpts } = options;
@@ -173,11 +183,17 @@ export default class Kraftizen {
 
     this.bot.on('error', (error) => {
       console.error('bot error', error);
+      botManagerEvents.emit(EventTypes.botError, {
+        botName: this.bot.username,
+        error,
+      });
     });
 
     this.bot.on('sleep', () => {
       this.sleeping = true;
     });
+
+    this.bot.on('target_aiming_at_you', () => {});
 
     this.bot._client.on('hurt_animation', async (packet, _meta) => {
       const entity = this.bot.entities[packet.entityId];
@@ -217,8 +233,13 @@ export default class Kraftizen {
     this.homePoint = botPosition(this.bot);
   };
 
+  public shutDown = () => {
+    this.bot.quit();
+  };
+
   private setPersona = (persona: Persona) => {
     if (this.persona === Persona.follower) {
+      /** No longer following = set new home */
       this.setHome();
     }
 
@@ -254,7 +275,7 @@ export default class Kraftizen {
         break;
       case 'follow':
         this.tasks.dropAllTasks();
-        this.bot.chat(`I will follow you, ${username}.`);
+        sendChat(this.bot, `I will follow you, ${username}.`);
         this.previousPersona = this.persona;
         this.persona = Persona.follower;
         break;
@@ -273,9 +294,9 @@ export default class Kraftizen {
         const arms = this.behaviors.equipMeleeWeapon();
 
         if (arms) {
-          this.bot.chat(`I have my ${arms.displayName}`);
+          sendChat(this.bot, `I have my ${arms.displayName}`);
         } else {
-          this.bot.chat('I have no weapons');
+          sendChat(this.bot, 'I have no weapons');
         }
         break;
       case 'relax':
@@ -313,15 +334,38 @@ export default class Kraftizen {
       case 'hunt':
         this.tasks.addTask({ type: Task.hunt, verbose: true });
         break;
+      case 'farm':
+        sendChat(this.bot, 'farming');
+        this.setPersona(Persona.farmer);
+        break;
       case 'nearby':
         console.log(this.bot.entities);
         break;
       case 'inventory':
         this.behaviors.listInventory();
         break;
+      case 'objective':
+      case 'directive':
       case 'current task':
-        this.bot.chat(
-          `My current task is to ${this.tasks.currentTask.type ?? 'idle'}`
+        const taskLabel =
+          this.tasks.currentTask.type === Task.personaTask
+            ? this.tasks.currentTask.description
+            : this.tasks.currentTask.type;
+        sendChat(this.bot, `My current task is to ${taskLabel ?? 'idle'}`);
+        break;
+      case 'location':
+      case 'where are you':
+      case 'coordinates':
+        const playerPos = this.bot.players[username]?.entity.position;
+        const botPos = this.bot.entity.position;
+        const baseMessage = `I am at x: ${botPos.x}, y: ${botPos.y}, x: ${botPos.z}`;
+        sendChat(
+          this.bot,
+          `${baseMessage}${
+            playerPos
+              ? ', to your ' + getCardinalDirection(playerPos, botPos)
+              : ''
+          }`
         );
         break;
       case 'return':
@@ -331,7 +375,7 @@ export default class Kraftizen {
       case 'prefer melee':
         // TODO: improve commanding
         this.behaviors.attackMode = 'melee';
-        this.bot.chat('I will attack melee from now on');
+        sendChat(this.bot, 'melee');
         break;
       case 'sleep':
         this.behaviors.goSleep();
@@ -353,9 +397,9 @@ export default class Kraftizen {
         });
         break;
       default:
-        this.bot.chat(
-          `I don't understand "${command}." Read the manual, peasant`
-        );
+        sendChat(this.bot, 'nonLoSo', {
+          replacements: [['command', command]],
+        });
     }
   };
 
@@ -374,6 +418,10 @@ export default class Kraftizen {
     return this.taskRunner(task, this);
   };
 
+  /**
+   * The async tasks are like a to-do list item, things the kraftizen
+   * wants to accomplish now, like commands or job functions, may be run inline
+   */
   public addTask = (task: TaskPayload, atEnd = false) => {
     this.tasks.addTask(task, atEnd);
   };

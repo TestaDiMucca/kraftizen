@@ -1,4 +1,4 @@
-import { Task, TaskPayload } from './actions/performTask';
+import { Task, TaskPayload } from '../actions/performTask';
 
 export default class QueueManager {
   taskQueue: TaskPayload[] = [];

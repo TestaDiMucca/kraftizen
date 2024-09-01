@@ -1,5 +1,5 @@
-import { KraftizenBot } from '../types';
-import { randomFromArray } from '../utils';
+import { KraftizenBot } from '../utils/types';
+import { randomFromArray } from '../utils/utils';
 
 export const greet = (bot: KraftizenBot) => {
   const botName = bot.player.username;
