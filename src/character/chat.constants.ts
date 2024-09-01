@@ -12,6 +12,10 @@ export enum ChatKeys {
   error = 'error',
   cancelChoice = 'cancelChoice',
   nonLoSo = 'nonLoSo',
+  setHome = 'setHome',
+  findBed = 'findBed',
+  ok = 'ok',
+  respawn = 'respawn',
 }
 
 export const DEFAULT_LINES: Record<ChatKeys, string | string[]> = {
@@ -56,4 +60,8 @@ export const DEFAULT_LINES: Record<ChatKeys, string | string[]> = {
   [ChatKeys.follow]: 'I will follow %username%',
   [ChatKeys.error]: ['Something went wrong', 'I brain farted'],
   [ChatKeys.cancelChoice]: 'I will do something else, then, Or nothing.',
+  [ChatKeys.setHome]: 'I will stay around here.',
+  [ChatKeys.findBed]: 'Should I look for a bed around here?',
+  [ChatKeys.ok]: 'Okay',
+  [ChatKeys.respawn]: 'I messed up.',
 };

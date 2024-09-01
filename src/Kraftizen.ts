@@ -28,6 +28,7 @@ import { getRateLimiter } from './utils/RateLimiter';
 import QueueManager from './utils/QueueManager';
 import { botManagerEvents, EventTypes } from './utils/events';
 import { INVENTORY_SLOTS_ALLOWED, MELEE_RANGE } from './utils/constants';
+import ChatDecisionTree from './utils/ChatDecisionTree';
 
 export type KraftizenOptions = mineflayer.BotOptions & {
   messenger: TeamMessenger;
@@ -61,6 +62,7 @@ export default class Kraftizen {
   private defaultMove: Movements;
   private mcData: ReturnType<typeof minecraftData>;
   private messenger: TeamMessenger;
+  private chatListener: ChatDecisionTree;
 
   constructor(
     options: KraftizenOptions,
@@ -70,6 +72,7 @@ export default class Kraftizen {
     this.bot = mineflayer.createBot(botOpts);
     this.messenger = messenger;
     this.username = this.bot.username;
+    this.chatListener = new ChatDecisionTree(this.bot);
 
     this.setup();
   }
@@ -163,7 +166,7 @@ export default class Kraftizen {
       this.tasks.blockTasksForMs(5000);
     });
     this.bot.on('respawn', () => {
-      this.bot.chat('Oops');
+      sendChat(this.bot, 'respawn', { delay: 1000 });
       this.addTasks([
         { type: Task.return },
         { type: Task.collect },
@@ -228,9 +231,22 @@ export default class Kraftizen {
     );
   };
 
-  public setHome = () => {
-    this.bot.chat('I will stay around here');
+  public setHome = (askToFindBed = false) => {
+    sendChat(this.bot, 'setHome');
     this.homePoint = botPosition(this.bot);
+
+    if (askToFindBed)
+      this.chatListener.promptResponse({
+        prompt: 'findBed',
+        chattingWith: this.lastCommandFrom,
+        options: {
+          no: null,
+          yes: () => {
+            sendChat(this.bot, 'ok');
+            this.addTask({ type: Task.sleep });
+          },
+        },
+      });
   };
 
   public shutDown = () => {
@@ -240,7 +256,7 @@ export default class Kraftizen {
   private setPersona = (persona: Persona) => {
     if (this.persona === Persona.follower) {
       /** No longer following = set new home */
-      this.setHome();
+      this.setHome(true);
     }
 
     this.persona = persona;
@@ -248,6 +264,12 @@ export default class Kraftizen {
 
   private handleChat = (username: string, message: string) => {
     if (username === this.bot.player.username) return;
+
+    if (this.chatListener.isListening()) {
+      console.log('forward to listener');
+      this.chatListener.handleChat(username, message);
+      return;
+    }
 
     const [command, target] = message
       .split(',')
@@ -261,6 +283,7 @@ export default class Kraftizen {
       return;
 
     this.lastCommandFrom = username;
+
     switch (command) {
       case 'obey':
         break;
@@ -440,16 +463,21 @@ export default class Kraftizen {
   private loop = async () => {
     let delay = 2000;
     try {
-      const nextTask = this.tasks.nextTask();
+      /** Blocking states */
+      if (this.chatListener.isListening()) {
+        delay = 4000;
+      } else {
+        const nextTask = this.tasks.nextTask();
 
-      if (nextTask && !this.tasks.currentTask) {
-        this.tasks.currentTask = nextTask;
-        await this.performTask(nextTask);
-        delay = 500;
-      }
+        if (nextTask && !this.tasks.currentTask) {
+          this.tasks.currentTask = nextTask;
+          await this.performTask(nextTask);
+          delay = 500;
+        }
 
-      if (this.tasks.isEmpty()) {
-        await queuePersonaTasks(this);
+        if (this.tasks.isEmpty()) {
+          await queuePersonaTasks(this);
+        }
       }
     } catch (e) {
       console.error('Error while looping', e);

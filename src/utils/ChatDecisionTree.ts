@@ -2,7 +2,10 @@ import { sendChat } from '../character/chatLines';
 import { DEFAULT_CHAT_WAIT } from './constants';
 import { KraftizenBot } from './types';
 
-type ChatChoices = Record<string, (response: string) => Promise<void> | void>;
+type ChatChoices = Record<
+  string,
+  null | ((response: string) => Promise<void> | void)
+>;
 
 /** Words to exit out of decision making without triggering anything */
 const cancelWords = ['exit', 'cancel', 'never mind'];
@@ -44,14 +47,18 @@ class ChatDecisionTree {
     sendChat(this.bot, prompt);
   };
 
-  public handleChat = async (username: string, message: string) => {
+  public handleChat = async (username: string, rawMessage: string) => {
     if (!this.options) {
       console.warn('Chat decision triggered without options set.');
       this.reset();
       return;
     }
 
+    console.log('handle chat inner');
+
     if (username !== this.chattingWith) return;
+
+    const message = rawMessage.toLowerCase();
 
     if (cancelWords.some((word) => message.startsWith(word))) {
       sendChat(this.bot, 'cancelChoice');
@@ -62,19 +69,30 @@ class ChatDecisionTree {
       message.startsWith(option)
     );
 
+    console.log('triggered', message, optionTriggered);
+
     if (!optionTriggered) return;
-    /* Reset must come first in case the callback sets another prompt */
-    this.reset();
     const callback = this.options[optionTriggered];
+
+    this.reset();
+
+    if (callback === null) {
+      sendChat(this.bot, 'ok');
+      this.reset();
+      return;
+    }
+
     try {
       await callback(message);
     } catch (e) {
       console.error('Error handling response', e);
       sendChat(this.bot, 'error');
+    } finally {
+      this.reset();
     }
   };
 
-  public isListening = () => !!this.options;
+  public isListening = () => this.options !== null;
 
   private reset = () => {
     this.options = null;

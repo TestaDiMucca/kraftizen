@@ -20,6 +20,7 @@ type ChatOpts = {
   replacements: Array<[string, string]>;
   /** Chance to actually say line. 0-1 */
   chance?: number;
+  delay?: number;
 };
 
 /**
@@ -28,23 +29,25 @@ type ChatOpts = {
 export const sendChat = (
   bot: KraftizenBot,
   messageOrKey: keyof LinesDict | string,
-  { replacements = [], chance = 100 }: Partial<ChatOpts> = {}
+  { replacements = [], chance = 100, delay = 0 }: Partial<ChatOpts> = {}
 ) => {
   if (chance < 1) {
     const rng = Math.random() * 100;
     if (rng > chance) return;
   }
-  const lineDict = CHAT_LINES[bot.player.username] ?? CHAT_LINES.default;
-  const lookup = Array.isArray(lineDict[messageOrKey])
-    ? randomFromArray(lineDict[messageOrKey])
-    : lineDict[messageOrKey];
+  const line =
+    CHAT_LINES[bot.player.username]?.[messageOrKey] ??
+    CHAT_LINES.default[messageOrKey];
+  const lookup = Array.isArray(line) ? randomFromArray(line) : line;
   const baseMessage: string = lookup ?? messageOrKey;
   let modifiedMessage = baseMessage;
   replacements.forEach(([key, value]) => {
     modifiedMessage = modifiedMessage.replace(`%${key}%`, value ?? 'blah');
   });
 
-  bot.chat(modifiedMessage);
+  setTimeout(() => {
+    bot.chat(modifiedMessage);
+  }, delay);
 };
 
 /**
