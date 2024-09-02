@@ -13,7 +13,10 @@ export default class TeamMessenger {
   }
 
   public messageTeam = (message: TeamMessage) => {
-    // Todo: this is a function call because we can, but maybe leverage actual events
+    process.send && process.send(message);
+  };
+
+  public onTeamMessage = (message: TeamMessage) => {
     setImmediate(() => {
       Object.values(this.teamMembers)
         .filter(

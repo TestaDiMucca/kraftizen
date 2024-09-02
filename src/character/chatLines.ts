@@ -81,8 +81,6 @@ const loadChatLines = () => {
       const parsed: Record<string, LinesDict> = JSON.parse(read);
 
       const merged = deepMerge(CHAT_LINES, parsed);
-
-      console.log(merged);
     })
     .catch((e: Error) => {
       console.log(`Chat loading error: ${e.message}`);

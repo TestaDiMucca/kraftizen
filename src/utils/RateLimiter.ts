@@ -12,15 +12,19 @@ class RateLimiter {
   constructor(private defaultOptions: RateLimitOptions) {}
 
   /** Set custom limit for a specific key */
-  setLimitForKey(key: string, options: RateLimitOptions): void {
+  setLimitForKey = (key: string, options: RateLimitOptions): void => {
     this.limits.set(key, options);
-  }
+  };
+
+  resetKey = (key: RateLimiterKeys | string) => {
+    delete this.counts[key];
+  };
 
   /** Check if the request can go through */
-  tryCall(key: RateLimiterKeys | string, id?: string): boolean {
+  tryCall = (key: RateLimiterKeys | string, id?: string): boolean => {
     const options = this.limits.get(key) || this.defaultOptions;
     const now = Date.now();
-    const record = this.counts.get(`${key}-${id}`);
+    const record = this.counts.get(id ? `${key}-${id}` : key);
 
     if (!record || now - record.lastReset > options.windowMs) {
       this.counts.set(key, { count: 1, lastReset: now });
@@ -31,7 +35,7 @@ class RateLimiter {
     }
 
     return false;
-  }
+  };
 }
 
 export enum RateLimiterKeys {

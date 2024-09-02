@@ -29,6 +29,7 @@ import QueueManager from './utils/QueueManager';
 import { botManagerEvents, EventTypes } from './utils/events';
 import { INVENTORY_SLOTS_ALLOWED, MELEE_RANGE } from './utils/constants';
 import ChatDecisionTree from './utils/ChatDecisionTree';
+import { KraftizenConfiguration } from './utils/utils.types';
 
 export type KraftizenOptions = mineflayer.BotOptions & {
   messenger: TeamMessenger;
@@ -71,7 +72,7 @@ export default class Kraftizen {
     const { messenger, ...botOpts } = options;
     this.bot = mineflayer.createBot(botOpts);
     this.messenger = messenger;
-    this.username = this.bot.username;
+    this.username = botOpts.username;
     this.chatListener = new ChatDecisionTree(this.bot);
 
     this.setup();
@@ -94,7 +95,7 @@ export default class Kraftizen {
     const senderUsername = message.sender.bot.username;
     switch (message.message) {
       case 'help':
-        console.log(senderUsername, 'asked for help from', this.bot.username);
+        console.debug(senderUsername, 'asked for help from', this.bot.username);
         this.addTasks(
           [
             { type: Task.come, username: senderUsername },
@@ -166,6 +167,7 @@ export default class Kraftizen {
       this.tasks.blockTasksForMs(5000);
     });
     this.bot.on('respawn', () => {
+      this.rateLimiter.resetKey('demandHelp');
       sendChat(this.bot, 'respawn', { delay: 1000 });
       this.addTasks([
         { type: Task.return },
@@ -467,7 +469,7 @@ export default class Kraftizen {
     let delay = 2000;
     try {
       /** Blocking states */
-      if (this.chatListener.isListening()) {
+      if (this.chatListener.isListening() || this.sleeping) {
         delay = 4000;
       } else {
         const nextTask = this.tasks.nextTask();
@@ -487,5 +489,21 @@ export default class Kraftizen {
     }
 
     setTimeout(this.loop, delay);
+  };
+
+  public statePersister = {
+    get: (): KraftizenConfiguration => ({
+      persona: this.persona,
+      homePoint: [this.homePoint.x, this.homePoint.y, this.homePoint.z],
+    }),
+    set: (config: KraftizenConfiguration) => {
+      if (config.persona) this.persona = config.persona;
+      if (config.homePoint)
+        this.homePoint = {
+          x: config.homePoint[0],
+          y: config.homePoint[1],
+          z: config.homePoint[2],
+        };
+    },
   };
 }

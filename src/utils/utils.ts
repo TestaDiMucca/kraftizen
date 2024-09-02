@@ -67,3 +67,33 @@ export const deepMerge = <T extends object>(target: T, ...sources: T[]): T => {
 
   return deepMerge(target, ...sources);
 };
+
+const shutdownCbs: Array<() => void> = [];
+
+export const onShutdown = (cb: () => void) => {
+  shutdownCbs.push(cb);
+};
+
+/** Add actual shutdown listeners */
+['SIGTERM', 'SIGINT', 'exit'].forEach((signal) =>
+  process.on(signal, () => {
+    shutdownCbs.forEach((cb) => cb());
+    process.exit();
+  })
+);
+
+export const slugify = (text: string): string => {
+  return (
+    text
+      // Convert to lowercase
+      .toLowerCase()
+      // Replace spaces with -
+      .replace(/\s+/g, '-')
+      // Remove all non-word chars except for - and _
+      .replace(/[^a-z0-9\-_]+/g, '')
+      // Replace multiple - or _ with a single -
+      .replace(/-+/g, '-')
+      // Trim - from start and end of text
+      .trim()
+  );
+};

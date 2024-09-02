@@ -1,51 +1,91 @@
-import { performTask } from './actions/performTask';
-import Kraftizen from './Kraftizen';
-import { BackoffController } from './utils/BackoffController';
-import { DEFAULT_NAMES } from './utils/constants';
-import { botManagerEvents, EventTypes } from './utils/events';
-import TeamMessenger from './utils/TeamMessenger';
+import { ChildProcess, fork } from 'child_process';
+import path from 'path';
 
-const kraftizenRoster: Record<string, Kraftizen> = {};
-const messenger = new TeamMessenger(kraftizenRoster);
-const backoffController = new BackoffController();
+import { DEFAULT_THREADS, DEFAULT_NAMES, CONF_NAME } from './utils/constants';
+import { Configuration, ProcessMessage } from './utils/utils.types';
+import { onShutdown } from './utils/utils';
+import { readYamlConfig, saveYamlConfig } from './utils/yamlHelpers';
 
 const count = Math.min(parseInt(process.argv[2] ?? '4'), 10);
 
-console.log('Start with bot count:', count);
+console.log('[main] start with bot count:', count);
 
-const addKraftizen = (username: string) => {
-  const kraftizenOpts = { host: 'localhost', port: 62228, username, messenger };
-  kraftizenRoster[kraftizenOpts.username] = new Kraftizen(
-    kraftizenOpts,
-    performTask
-  );
+const childProcesses: ChildProcess[] = [];
+const confFilePath = path.join(__dirname, CONF_NAME);
+
+const messageChild = (child: ChildProcess, message: ProcessMessage) => {
+  child.send(message);
 };
 
-const main = () => {
-  for (let i = 0; i < count; i++) {
-    const name = DEFAULT_NAMES[i] ?? `SYNTHETIC-KTZ-${i}`;
+let configuration: Partial<Configuration> = {
+  host: 'localhost',
+  port: 62228,
+  names: DEFAULT_NAMES,
+};
 
-    addKraftizen(name);
+const setupChild = (id: number) => {
+  const child = fork(path.join(__dirname, './kraftizenThread.ts'));
+
+  child.on('spawn', () => {
+    const { host, port } = configuration;
+    messageChild(child, {
+      type: 'config',
+      host,
+      port,
+      id,
+    });
+  });
+
+  child.on('message', (message: ProcessMessage) => {
+    switch (message.type) {
+      case 'teamMessage':
+        childProcesses.forEach((child) => messageChild(child, message));
+        break;
+      case 'error':
+        console.log(`Child threw error: ${message.error}`);
+        break;
+      default:
+    }
+  });
+
+  child.on('exit', (code) => {
+    console.log(`[main] Child process exited with code ${code}`);
+  });
+
+  childProcesses.push(child);
+};
+
+const loadConfiguration = () => {
+  try {
+    const loadedConfig = readYamlConfig<Configuration>(confFilePath);
+
+    if (loadedConfig)
+      configuration = {
+        ...configuration,
+        ...loadedConfig,
+      };
+  } catch (e) {
+    console.error(`[main] Error loading config: ${e.message}`);
+  }
+};
+
+const main = async () => {
+  loadConfiguration();
+
+  for (let i = 0; i < DEFAULT_THREADS; i++) {
+    setupChild(i);
   }
 
-  botManagerEvents.on(EventTypes.botError, (message) => {
-    if (!kraftizenRoster[message.botName]) return;
-    kraftizenRoster[message.botName].shutDown();
+  for (let i = 0; i < count; i++) {
+    const username = configuration.names[i] ?? `SYNTHETIC-KTZ-${i}`;
 
-    delete kraftizenRoster[message.botName];
-
-    const delay = backoffController.nextDelay(message.botName);
-
-    if (delay === null) {
-      console.log(
-        `No longer trying to respawn ${message.botName}. Error: ${message.error}`
-      );
-      return;
-    }
-    setTimeout(() => {
-      addKraftizen(message.botName);
-    }, delay);
-  });
+    const child = childProcesses[i % childProcesses.length];
+    messageChild(child, { type: 'create', username });
+  }
 };
 
-main();
+void main();
+
+onShutdown(() => {
+  saveYamlConfig(configuration, confFilePath);
+});

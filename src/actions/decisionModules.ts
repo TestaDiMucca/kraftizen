@@ -5,19 +5,22 @@ import { getRandomIntInclusive, randomFromArray } from '../utils/utils';
 import { DecisionModule, DecisionModuleFactory } from './decisionModules.util';
 import { getItemInInventory } from './itemActions';
 import { Task } from './performTask';
+import { HOME_RANGE } from '../utils/constants';
 
 export const attackAdjacentEnemies: DecisionModule = {
   name: 'Attack adjacent enemies',
   chance: 0.6,
-  criteria: ({ kraftizen }) => {
+  criteria: ({ kraftizen, targetEnemy }) => {
     if (kraftizen.tasks.hasTask(Task.hunt)) return;
 
     const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
+
+    targetEnemy = nearbyEnemy;
     return !!nearbyEnemy;
   },
-  action: async ({ kraftizen }) => {
+  action: async ({ kraftizen, targetEnemy }) => {
     /* Usually we should get attacked and respond anyway */
-    const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
+    const nearbyEnemy = targetEnemy;
 
     if (nearbyEnemy && kraftizen.tasks.taskQueue.length <= 1) {
       /** Bypass queue for urgently close enemies */
@@ -37,7 +40,9 @@ export const trySleeping: DecisionModule = {
     !kraftizen.bot.isSleeping &&
     !kraftizen.sleeping,
   action: async ({ kraftizen }) => {
-    const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(5);
+    const nearbyEnemy = kraftizen.behaviors.getNearestHostileMob(
+      HOME_RANGE / 2
+    );
 
     if (nearbyEnemy && kraftizen.tasks.taskQueue.length <= 1) {
       kraftizen.behaviors.attackNearest(nearbyEnemy);
@@ -132,6 +137,7 @@ export const visitBlock: DecisionModuleFactory = (
     kraftizen.addTask({
       type: Task.findBlock,
       blockNames: [blockName],
+      ignoreY: true,
     }),
 });
 
@@ -139,6 +145,8 @@ export const harvestField: DecisionModule = {
   name: 'Harvest fields',
   criteria: async (context) => {
     const { kraftizen } = context;
+
+    await kraftizen.bot.unequip('hand');
 
     /** too much meta for normal findBlock helper */
     const harvestCrop = kraftizen.bot.findBlock({
@@ -166,7 +174,7 @@ export const harvestField: DecisionModule = {
       await kraftizen.behaviors.toCoordinate(targetBlock.position, 0, 2);
     }
 
-    await kraftizen.bot.dig(targetBlock);
+    await kraftizen.bot.dig(targetBlock, true);
   },
 };
 
