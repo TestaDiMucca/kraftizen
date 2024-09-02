@@ -44,3 +44,26 @@ export const logPrimitives = (...args: any[]): void => {
 
   console.debug(...processedArgs);
 };
+
+const isObject = (item: any): boolean => {
+  return item && typeof item === 'object' && !Array.isArray(item);
+};
+
+export const deepMerge = <T extends object>(target: T, ...sources: T[]): T => {
+  if (!sources.length) return target;
+
+  const source = sources.shift();
+
+  if (isObject(target) && isObject(source)) {
+    for (const key in source) {
+      if (isObject(source[key])) {
+        if (!target[key]) Object.assign(target, { [key]: {} });
+        deepMerge(target[key] as object, source[key] as object);
+      } else {
+        Object.assign(target, { [key]: source[key] });
+      }
+    }
+  }
+
+  return deepMerge(target, ...sources);
+};

@@ -1,41 +1,13 @@
-import { KraftizenBot } from '../utils/types';
-import { randomFromArray, sleep } from '../utils/utils';
+import fs from 'fs/promises';
+import path from 'path';
 
-const DEFAULT_LINES: Record<string, string | string[]> = {
-  returning: ['I will return', 'Going home'],
-  relaxing: ['I will do nothing now', 'Clocking off', 'Stopping work'],
-  guarding: [
-    'Eliminate all threats!',
-    'Standing guard',
-    'Protecting area',
-    'Annihilate them!',
-    'Smite them to smithereens!',
-    'Take no prisoners',
-    'The battlefield awaits.',
-  ],
-  chatter: [
-    'I am so busy',
-    'What even is life?',
-    'Need recharge',
-    'Have a nice day',
-    'What are we doing?',
-    'Beyond compare',
-    'Umu umu.',
-    'Wolves hunt in backs',
-    'Goblins ill like fire',
-  ],
-  farming: [
-    "It's honest work.",
-    'I will watch crops grow.',
-    'Feeding all kraftizens.',
-    'Non-GMO.',
-  ],
-  hungry: 'I am hungry',
-  hurt: 'In pain',
-  loot: 'I will watch for items',
-  melee: 'Close quarters only',
-  nonLoSo: 'I do not understand "%command%". Read the manual, peasant.',
-};
+import { KraftizenBot } from '../utils/types';
+import { deepMerge, randomFromArray, sleep } from '../utils/utils';
+import { DEFAULT_LINES } from './chat.constants';
+
+const CHAT_JSON = 'chats.json';
+
+export { ChatKeys } from './chat.constants';
 
 type LinesDict = typeof DEFAULT_LINES;
 
@@ -48,6 +20,7 @@ type ChatOpts = {
   replacements: Array<[string, string]>;
   /** Chance to actually say line. 0-1 */
   chance?: number;
+  delay?: number;
 };
 
 /**
@@ -56,23 +29,25 @@ type ChatOpts = {
 export const sendChat = (
   bot: KraftizenBot,
   messageOrKey: keyof LinesDict | string,
-  { replacements = [], chance = 100 }: Partial<ChatOpts> = {}
+  { replacements = [], chance = 100, delay = 0 }: Partial<ChatOpts> = {}
 ) => {
   if (chance < 1) {
     const rng = Math.random() * 100;
     if (rng > chance) return;
   }
-  const lineDict = CHAT_LINES[bot.player.username] ?? CHAT_LINES.default;
-  const lookup = Array.isArray(lineDict[messageOrKey])
-    ? randomFromArray(lineDict[messageOrKey])
-    : lineDict[messageOrKey];
+  const line =
+    CHAT_LINES[bot.player.username]?.[messageOrKey] ??
+    CHAT_LINES.default[messageOrKey];
+  const lookup = Array.isArray(line) ? randomFromArray(line) : line;
   const baseMessage: string = lookup ?? messageOrKey;
   let modifiedMessage = baseMessage;
   replacements.forEach(([key, value]) => {
     modifiedMessage = modifiedMessage.replace(`%${key}%`, value ?? 'blah');
   });
 
-  bot.chat(modifiedMessage);
+  setTimeout(() => {
+    bot.chat(modifiedMessage);
+  }, delay);
 };
 
 /**
@@ -97,3 +72,21 @@ export const sendChats = (
 export const CHAT_LINES: Record<string, LinesDict> = {
   default: generateLineDict({}),
 };
+
+const loadChatLines = () => {
+  const chatJsonPath = path.join(__dirname, CHAT_JSON);
+
+  fs.readFile(chatJsonPath, { encoding: 'utf8' })
+    .then((read) => {
+      const parsed: Record<string, LinesDict> = JSON.parse(read);
+
+      const merged = deepMerge(CHAT_LINES, parsed);
+
+      console.log(merged);
+    })
+    .catch((e: Error) => {
+      console.log(`Chat loading error: ${e.message}`);
+    });
+};
+
+loadChatLines();
