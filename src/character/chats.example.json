@@ -40,5 +40,15 @@
     "loot": "I will watch for items",
     "melee": "Close quarters only",
     "nonLoSo": "I do not understand \"%command%\". Read the manual, peasant."
+  },
+  "Kazuma": {
+    "hurt": [
+      "Save me useless goddess!",
+      "Why me! Why me!!",
+      "DAMN IT ALL!!"
+    ],
+    "farming": [
+      "I am going to get rich off these crops"
+    ]
   }
 }

@@ -302,6 +302,8 @@ export default class Kraftizen {
         this.previousPersona = this.persona;
         this.persona = Persona.follower;
         break;
+      case 'patrol':
+      // TODO: guard should be more static, smaller range
       case 'guard':
         sendChat(this.bot, 'guarding');
         this.setPersona(Persona.guard);
@@ -322,6 +324,7 @@ export default class Kraftizen {
           sendChat(this.bot, 'I have no weapons');
         }
         break;
+      case 'off':
       case 'relax':
       case 'chill':
         sendChat(this.bot, 'relaxing');
@@ -458,7 +461,7 @@ export default class Kraftizen {
   };
 
   /**
-   * Main behaviors loop
+   * Main behaviors event loop
    */
   private loop = async () => {
     let delay = 2000;
