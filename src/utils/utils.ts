@@ -67,3 +67,17 @@ export const deepMerge = <T extends object>(target: T, ...sources: T[]): T => {
 
   return deepMerge(target, ...sources);
 };
+
+const shutdownCbs: Array<() => void> = [];
+
+export const onShutdown = (cb: () => void) => {
+  shutdownCbs.push(cb);
+};
+
+/** Add actual shutdown listeners */
+['SIGTERM', 'SIGINT', 'exit'].forEach((signal) =>
+  process.on(signal, () => {
+    shutdownCbs.forEach((cb) => cb());
+    process.exit();
+  })
+);

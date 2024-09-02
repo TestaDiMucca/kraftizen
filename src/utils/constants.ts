@@ -7,6 +7,7 @@ export const HOME_RANGE = 100;
 /** How long before giving up on path finding */
 export const PATH_FINDING_TIMEOUT = 10 * 1000;
 
+/** Some starter names */
 export const DEFAULT_NAMES = [
   'Kazuma',
   'Miko',
@@ -45,3 +46,6 @@ export const DEFAULT_CHAT_WAIT = 1000 * 20;
 
 /** How many threads to split bots across */
 export const DEFAULT_THREADS = 2;
+
+/** What file to save the config */
+export const CONF_NAME = 'configuration.yaml';

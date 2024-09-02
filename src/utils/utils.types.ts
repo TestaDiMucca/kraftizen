@@ -11,9 +11,18 @@ export type ProcessMessage =
       type: 'config';
       host: string;
       port: number;
-      auth: AuthTypes;
+      auth?: AuthTypes;
+      id: number;
     }
   | {
       type: 'teamMessage';
       message: TeamMessage;
     };
+
+export type Configuration = {
+  names?: string[];
+  host?: string;
+  port?: number;
+  auth?: AuthTypes;
+  threads?: number;
+};
