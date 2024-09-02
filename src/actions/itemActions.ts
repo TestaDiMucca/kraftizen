@@ -34,10 +34,11 @@ const itemMatches = (bot: KraftizenBot, itemType: string, item: Item) => {
   );
 };
 
-const getAllHeldItems = (bot: KraftizenBot, equip: boolean = true) => {
-  return [...(equip ? bot.entity.equipment : []), bot.inventory.slots].flatMap(
-    (i) => (!!i ? i : [])
-  );
+const getAllHeldItems = (bot: KraftizenBot, includeEquip: boolean = true) => {
+  return [
+    ...(includeEquip ? bot.entity.equipment : []),
+    bot.inventory.items(),
+  ].flatMap((i) => (!!i ? i : []));
 };
 
 const equipTiers = [

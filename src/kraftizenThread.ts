@@ -1,13 +1,26 @@
+import path from 'path';
+import fs from 'fs';
+
 import Kraftizen from './Kraftizen';
 import TeamMessenger from './utils/TeamMessenger';
-import { AuthTypes, ProcessMessage } from './utils/utils.types';
+import {
+  AuthTypes,
+  KraftizenConfiguration,
+  ProcessMessage,
+} from './utils/utils.types';
 import { performTask } from './actions/performTask';
 import { botManagerEvents, EventTypes } from './utils/events';
 import { BackoffController } from './utils/BackoffController';
+import { onShutdown, slugify } from './utils/utils';
+import { readYamlConfig, saveYamlConfig } from './utils/yamlHelpers';
 
 const kraftizenRoster: Record<string, Kraftizen> = {};
 const messenger = new TeamMessenger(kraftizenRoster);
 const backoffController = new BackoffController();
+
+const kraftizenRepository = path.join(__dirname, 'kraftizens');
+const getKraftizenConfigPath = (username: string) =>
+  path.join(kraftizenRepository, `ktz-${slugify(username)}.yaml`);
 
 let host = 'localhost';
 let port = 62228;
@@ -21,10 +34,24 @@ const addKraftizen = (username: string) => {
     messenger,
     auth,
   };
+
   kraftizenRoster[kraftizenOpts.username] = new Kraftizen(
     kraftizenOpts,
     performTask
   );
+
+  try {
+    const loaded = readYamlConfig<KraftizenConfiguration>(
+      getKraftizenConfigPath(username)
+    );
+
+    if (loaded)
+      kraftizenRoster[kraftizenOpts.username]?.statePersister.set(loaded);
+  } catch (e) {
+    console.error(
+      `Could not load kraftizen state for ${username}: ${e.message}`
+    );
+  }
 };
 
 process.on('message', (message: ProcessMessage) => {
@@ -45,8 +72,15 @@ process.on('message', (message: ProcessMessage) => {
   }
 });
 
+process.on('uncaughtException', (e) => {
+  process.send({ type: 'error', error: e.message });
+  process.exit(1);
+});
+
 /** Establish kraftizen-level listeners */
 const main = () => {
+  if (!fs.existsSync(kraftizenRepository)) fs.mkdirSync(kraftizenRepository);
+
   botManagerEvents.on(EventTypes.botError, (message) => {
     if (!kraftizenRoster[message.botName]) return;
     kraftizenRoster[message.botName].shutDown();
@@ -64,6 +98,14 @@ const main = () => {
     setTimeout(() => {
       addKraftizen(message.botName);
     }, delay);
+  });
+
+  onShutdown(() => {
+    // save kraftizens state
+    Object.values(kraftizenRoster).forEach((kraftizen) => {
+      const state = kraftizen.statePersister.get();
+      saveYamlConfig(state, getKraftizenConfigPath(kraftizen.username));
+    });
   });
 };
 

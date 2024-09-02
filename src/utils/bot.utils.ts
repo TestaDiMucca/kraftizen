@@ -26,6 +26,12 @@ export const getKnownHostileMobs = (bot: KraftizenBot) => {
     });
 };
 
+export const vec3ToPosition = (vec3: Vec3) => ({
+  x: vec3.x,
+  y: vec3.y,
+  z: vec3.z,
+});
+
 export const positionToVec3 = (pos: Position) =>
   pos instanceof Vec3 ? pos : new Vec3(pos.x, pos.y, pos.z);
 

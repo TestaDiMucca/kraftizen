@@ -41,6 +41,9 @@ const setupChild = (id: number) => {
       case 'teamMessage':
         childProcesses.forEach((child) => messageChild(child, message));
         break;
+      case 'error':
+        console.log(`Child threw error: ${message.error}`);
+        break;
       default:
     }
   });

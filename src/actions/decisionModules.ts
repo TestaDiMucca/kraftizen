@@ -140,6 +140,8 @@ export const harvestField: DecisionModule = {
   criteria: async (context) => {
     const { kraftizen } = context;
 
+    await kraftizen.bot.unequip('hand');
+
     /** too much meta for normal findBlock helper */
     const harvestCrop = kraftizen.bot.findBlock({
       point: kraftizen.bot.entity.position,
@@ -166,7 +168,7 @@ export const harvestField: DecisionModule = {
       await kraftizen.behaviors.toCoordinate(targetBlock.position, 0, 2);
     }
 
-    await kraftizen.bot.dig(targetBlock);
+    await kraftizen.bot.dig(targetBlock, true);
   },
 };
 

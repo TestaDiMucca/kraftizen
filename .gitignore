@@ -2,3 +2,4 @@
 node_modules/
 chats.json
 configuration.yaml
+ktz-*.yaml
