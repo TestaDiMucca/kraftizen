@@ -35,6 +35,7 @@ type TaskPayloadByType =
       multiple?: boolean;
       blockNames?: string[];
       visited?: Set<string>;
+      ignoreY?: boolean;
     }
   | {
       type: Task.withdraw;
@@ -117,7 +118,8 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
         const chest = await behaviors.goToChest(
           task.blockNames ?? ['chest', 'barrel'],
           visited,
-          task.range
+          task.range,
+          task.ignoreY
         );
 
         if (chest) {
@@ -128,6 +130,7 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
               verbose: task.verbose,
               withdraw: task.withdraw,
               visited,
+              ignoreY: task.ignoreY,
             });
           }
           if (task.withdraw)

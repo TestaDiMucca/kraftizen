@@ -1,5 +1,5 @@
 import Kraftizen from '../Kraftizen';
-import { Block, Item, Position } from '../utils/types';
+import { Block, Entity, Item, Position } from '../utils/types';
 import { Task } from './performTask';
 
 /**
@@ -25,6 +25,7 @@ type Context = {
   targetPos?: Position;
   targetBlock?: Block;
   targetItem?: Item;
+  targetEnemy?: Entity;
 };
 
 /**
@@ -35,6 +36,7 @@ const tempKeys: Array<keyof Context> = [
   'targetBlock',
   'targetItem',
   'targetPos',
+  'targetEnemy',
 ];
 
 /**
@@ -71,6 +73,7 @@ export const processDecisionModules = async (
       if (!dm.continue) break;
     }
 
+    /** Clear context items that were meant to pass from criteria to action */
     tempKeys.forEach((key) => {
       if (context[key]) delete context[key];
     });

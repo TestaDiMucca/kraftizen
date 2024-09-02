@@ -469,7 +469,7 @@ export default class Kraftizen {
     let delay = 2000;
     try {
       /** Blocking states */
-      if (this.chatListener.isListening()) {
+      if (this.chatListener.isListening() || this.sleeping) {
         delay = 4000;
       } else {
         const nextTask = this.tasks.nextTask();

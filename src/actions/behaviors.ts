@@ -131,7 +131,8 @@ export default class BehaviorsEngine {
     /** Randomness in goal */
     deviation = 0,
     /** Navigate to this many blocks away */
-    nearRange = 1
+    nearRange = 1,
+    ignoreY = false
   ): Promise<boolean> => {
     return new Promise(async (resolve) => {
       try {
@@ -145,12 +146,18 @@ export default class BehaviorsEngine {
         const offset =
           deviation > 0 ? getRandomIntInclusive(-deviation, deviation) : 0;
 
-        const goal = new goals.GoalNear(
-          position.x + offset,
-          position.y,
-          position.z + offset,
-          nearRange
-        );
+        const goal = ignoreY
+          ? new goals.GoalNearXZ(
+              position.x + offset,
+              position.z + offset,
+              nearRange
+            )
+          : new goals.GoalNear(
+              position.x + offset,
+              position.y,
+              position.z + offset,
+              nearRange
+            );
 
         /** Probably another GoalChanged error, who cares */
         this.bot.pathfinder.goto(goal).catch(() => {});
@@ -234,13 +241,14 @@ export default class BehaviorsEngine {
   public goToChest = async (
     blocks = ['chest', 'barrel'],
     visited: Set<string> = new Set(),
-    range = this.range
+    range = this.range,
+    ignoreY = false
   ) => {
     const chestToOpen = this.findBlock(range, blocks, visited);
 
     if (!chestToOpen) return;
 
-    await this.toCoordinate(chestToOpen.position, 0, 1);
+    await this.toCoordinate(chestToOpen.position, 0, 1, ignoreY);
 
     return chestToOpen;
   };
