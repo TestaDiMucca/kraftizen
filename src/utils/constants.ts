@@ -42,3 +42,6 @@ export const NEAR_RANGE = 2;
 
 /** How long to wait for a chat response */
 export const DEFAULT_CHAT_WAIT = 1000 * 20;
+
+/** How many threads to split bots across */
+export const DEFAULT_THREADS = 2;

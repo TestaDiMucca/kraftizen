@@ -166,6 +166,7 @@ export default class Kraftizen {
       this.tasks.blockTasksForMs(5000);
     });
     this.bot.on('respawn', () => {
+      this.rateLimiter.resetKey('demandHelp');
       sendChat(this.bot, 'respawn', { delay: 1000 });
       this.addTasks([
         { type: Task.return },

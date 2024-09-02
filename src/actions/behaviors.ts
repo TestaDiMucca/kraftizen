@@ -100,8 +100,6 @@ export default class BehaviorsEngine {
 
       if (!bed) return this.bot.chat('No bed nearby...');
 
-      this.teamMessenger.setClaimedItem('bed', posString(bed.position));
-
       const reached = await this.toCoordinate(bed.position, 0, 1);
 
       if (reached && !this.bot.time.isDay) {

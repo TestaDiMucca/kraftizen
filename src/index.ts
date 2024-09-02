@@ -1,51 +1,49 @@
-import { performTask } from './actions/performTask';
-import Kraftizen from './Kraftizen';
-import { BackoffController } from './utils/BackoffController';
-import { DEFAULT_NAMES } from './utils/constants';
-import { botManagerEvents, EventTypes } from './utils/events';
-import TeamMessenger from './utils/TeamMessenger';
+import { ChildProcess, fork } from 'child_process';
+import path from 'path';
 
-const kraftizenRoster: Record<string, Kraftizen> = {};
-const messenger = new TeamMessenger(kraftizenRoster);
-const backoffController = new BackoffController();
+import { DEFAULT_THREADS, DEFAULT_NAMES } from './utils/constants';
+import { ProcessMessage } from './utils/utils.types';
 
 const count = Math.min(parseInt(process.argv[2] ?? '4'), 10);
 
 console.log('Start with bot count:', count);
 
-const addKraftizen = (username: string) => {
-  const kraftizenOpts = { host: 'localhost', port: 62228, username, messenger };
-  kraftizenRoster[kraftizenOpts.username] = new Kraftizen(
-    kraftizenOpts,
-    performTask
-  );
+const childProcesses: ChildProcess[] = [];
+
+const messageChild = (child: ChildProcess, message: ProcessMessage) => {
+  child.send(message);
+};
+
+const setupChild = () => {
+  const child = fork(path.join(__dirname, './kraftizenThread.ts'));
+
+  child.on('message', (message: ProcessMessage) => {
+    switch (message.type) {
+      case 'teamMessage':
+        childProcesses.forEach((child) => messageChild(child, message));
+        break;
+      default:
+    }
+  });
+
+  child.on('exit', (code) => {
+    console.log(`Child process exited with code ${code}`);
+  });
+
+  childProcesses.push(child);
 };
 
 const main = () => {
-  for (let i = 0; i < count; i++) {
-    const name = DEFAULT_NAMES[i] ?? `SYNTHETIC-KTZ-${i}`;
-
-    addKraftizen(name);
+  for (let i = 0; i < DEFAULT_THREADS; i++) {
+    setupChild();
   }
 
-  botManagerEvents.on(EventTypes.botError, (message) => {
-    if (!kraftizenRoster[message.botName]) return;
-    kraftizenRoster[message.botName].shutDown();
+  for (let i = 0; i < count; i++) {
+    const username = DEFAULT_NAMES[i] ?? `SYNTHETIC-KTZ-${i}`;
 
-    delete kraftizenRoster[message.botName];
-
-    const delay = backoffController.nextDelay(message.botName);
-
-    if (delay === null) {
-      console.log(
-        `No longer trying to respawn ${message.botName}. Error: ${message.error}`
-      );
-      return;
-    }
-    setTimeout(() => {
-      addKraftizen(message.botName);
-    }, delay);
-  });
+    const child = childProcesses[i % childProcesses.length];
+    messageChild(child, { type: 'create', username });
+  }
 };
 
 main();
