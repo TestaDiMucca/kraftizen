@@ -15,12 +15,12 @@ import { Task, TaskPayload } from './actions/performTask';
 import { performTask } from './actions/performTask';
 import { queuePersonaTasks } from './actions/queuePersonaTasks';
 import { sendChat } from './character/chatLines';
-import TeamMessenger, { TeamMessage } from './utils/TeamMessenger';
-import { getRateLimiter } from './utils/RateLimiter';
-import QueueManager from './utils/QueueManager';
+import TeamMessenger, { TeamMessage } from './objects/TeamMessenger';
+import { getRateLimiter } from './objects/RateLimiter';
+import QueueManager from './objects/QueueManager';
 import { botManagerEvents, EventTypes } from './utils/events';
 import { INVENTORY_SLOTS_ALLOWED, MELEE_RANGE } from './utils/constants';
-import ChatDecisionTree from './utils/ChatDecisionTree';
+import ChatDecisionTree from './objects/ChatDecisionTree';
 import { KraftizenConfiguration } from './utils/utils.types';
 import processChatCommand from './commands/commands';
 

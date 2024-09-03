@@ -28,7 +28,7 @@ import {
   hasWeapon,
 } from './itemActions';
 import { ChatKeys, sendChat, sendChats } from '../character/chatLines';
-import TeamMessenger from '../utils/TeamMessenger';
+import TeamMessenger from '../objects/TeamMessenger';
 
 type BehaviorsEngineOpts = {
   defaultMove: Movements;

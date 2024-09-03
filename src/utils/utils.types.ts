@@ -1,4 +1,4 @@
-import { TeamMessage } from './TeamMessenger';
+import { TeamMessage } from '../objects/TeamMessenger';
 import { Persona } from './types';
 
 export type AuthTypes = 'offline' | 'microsoft' | 'mojang';

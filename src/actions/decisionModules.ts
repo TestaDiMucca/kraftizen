@@ -1,6 +1,6 @@
 import { Vec3 } from 'vec3';
 import { personaReturnsHome } from '../utils/bot.utils';
-import { RateLimiterKeys } from '../utils/RateLimiter';
+import { RateLimiterKeys } from '../objects/RateLimiter';
 import { getRandomIntInclusive, randomFromArray } from '../utils/utils';
 import { DecisionModule, DecisionModuleFactory } from './decisionModules.util';
 import { getItemInInventory } from './itemActions';

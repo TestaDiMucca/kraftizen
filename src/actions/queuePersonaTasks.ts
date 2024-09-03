@@ -5,7 +5,7 @@ import Kraftizen from '../Kraftizen';
 import { Persona } from '../utils/types';
 import { Task } from './performTask';
 import { hasWeapon } from './itemActions';
-import { RateLimiterKeys } from '../utils/RateLimiter';
+import { RateLimiterKeys } from '../objects/RateLimiter';
 import { processDecisionModules } from './decisionModules.util';
 import {
   allDecisionModules,
