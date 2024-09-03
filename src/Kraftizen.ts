@@ -7,17 +7,9 @@ import hawkeye from 'minecrafthawkeye';
 
 import { KraftizenBot, Persona, Position } from './utils/types';
 import { Movements } from 'mineflayer-pathfinder';
-import {
-  botPosition,
-  getCardinalDirection,
-  getDefaultMovements,
-} from './utils/bot.utils';
+import { botPosition, getDefaultMovements } from './utils/bot.utils';
 import { greet } from './actions/greet';
-import {
-  calculateDistance3D,
-  getRandomIntInclusive,
-  sleep,
-} from './utils/utils';
+import { calculateDistance3D, sleep } from './utils/utils';
 import BehaviorsEngine from './actions/behaviors';
 import { Task, TaskPayload } from './actions/performTask';
 import { performTask } from './actions/performTask';
@@ -30,6 +22,7 @@ import { botManagerEvents, EventTypes } from './utils/events';
 import { INVENTORY_SLOTS_ALLOWED, MELEE_RANGE } from './utils/constants';
 import ChatDecisionTree from './utils/ChatDecisionTree';
 import { KraftizenConfiguration } from './utils/utils.types';
+import processChatCommand from './commands/commands';
 
 export type KraftizenOptions = mineflayer.BotOptions & {
   messenger: TeamMessenger;
@@ -255,7 +248,7 @@ export default class Kraftizen {
     this.bot.quit();
   };
 
-  private setPersona = (persona: Persona) => {
+  public setPersona = (persona: Persona) => {
     if (this.persona === Persona.follower) {
       /** No longer following = set new home */
       this.setHome(true);
@@ -284,154 +277,10 @@ export default class Kraftizen {
     )
       return;
 
-    this.lastCommandFrom = username;
-
-    switch (command) {
-      case 'obey':
-        break;
-      case 'hello':
-        setTimeout(
-          () => this.greetUser(username),
-          getRandomIntInclusive(100, 1000)
-        );
-        break;
-      case 'eat':
-        this.behaviors.eat(true);
-        break;
-      case 'follow':
-        this.tasks.dropAllTasks();
-        sendChat(this.bot, `I will follow you, ${username}.`);
-        this.previousPersona = this.persona;
-        this.persona = Persona.follower;
-        break;
-      case 'patrol':
-      // TODO: guard should be more static, smaller range
-      case 'guard':
-        sendChat(this.bot, 'guarding');
-        this.setPersona(Persona.guard);
-        break;
-      case 'loot':
-        sendChat(this.bot, 'loot');
-        this.setPersona(Persona.loot);
-        break;
-      case 'home':
-        this.setHome();
-        break;
-      case 'arms':
-        const arms = this.behaviors.equipMeleeWeapon();
-
-        if (arms) {
-          sendChat(this.bot, `I have my ${arms.displayName}`);
-        } else {
-          sendChat(this.bot, 'I have no weapons');
-        }
-        break;
-      case 'off':
-      case 'relax':
-      case 'chill':
-        sendChat(this.bot, 'relaxing');
-        this.setPersona(Persona.none);
-        break;
-      case 'collect':
-        this.addTask({ type: Task.collect, verbose: true });
-        break;
-      case 'deposit':
-      case 'unload':
-        this.addTask({
-          type: Task.findBlock,
-          deposit: true,
-          verbose: true,
-        });
-        break;
-      case 'stay':
-        this.setPersona(this.previousPersona);
-        break;
-      case 'come':
-      case 'here':
-        this.tasks.dropAllTasks();
-        this.tasks.addTask({ type: Task.come, username, oneTime: true });
-        break;
-      case 'camp here':
-        this.tasks.addTask({
-          type: Task.come,
-          username,
-          oneTime: true,
-          setHome: true,
-        });
-        break;
-      case 'hunt':
-        this.tasks.addTask({ type: Task.hunt, verbose: true });
-        break;
-      case 'farm':
-        sendChat(this.bot, 'farming');
-        this.setPersona(Persona.farmer);
-        break;
-      case 'nearby':
-        console.log(this.bot.entities);
-        break;
-      case 'inventory':
-        this.behaviors.listInventory();
-        break;
-      case 'objective':
-      case 'directive':
-      case 'current task':
-        const taskLabel =
-          this.tasks.currentTask.type === Task.personaTask
-            ? this.tasks.currentTask.description
-            : this.tasks.currentTask.type;
-        sendChat(this.bot, `My current task is to ${taskLabel ?? 'idle'}`);
-        break;
-      case 'location':
-      case 'where are you':
-      case 'coordinates':
-        const playerPos = this.bot.players[username]?.entity.position;
-        const botPos = this.bot.entity.position;
-        const baseMessage = `I am at x: ${botPos.x}, y: ${botPos.y}, x: ${botPos.z}`;
-        sendChat(
-          this.bot,
-          `${baseMessage}${
-            playerPos
-              ? ', to your ' + getCardinalDirection(playerPos, botPos)
-              : ''
-          }`
-        );
-        break;
-      case 'return':
-        sendChat(this.bot, 'returning');
-        this.tasks.addTask({ type: Task.return });
-        break;
-      case 'prefer melee':
-        // TODO: improve commanding
-        this.behaviors.attackMode = 'melee';
-        sendChat(this.bot, 'melee');
-        break;
-      case 'sleep':
-        this.behaviors.goSleep();
-        break;
-      case 'wake':
-        this.bot.wake();
-        break;
-      case 'block at':
-        const block = this.bot.blockAt(this.bot.entity.position, true);
-        console.log(block, this.bot.canSeeBlock(block));
-        break;
-      case 'withdraw':
-      case 'stock up':
-        this.tasks.addTask({
-          type: Task.findBlock,
-          verbose: true,
-          withdraw: true,
-          multiple: true,
-        });
-        break;
-      default:
-        sendChat(this.bot, 'nonLoSo', {
-          replacements: [['command', command]],
-        });
-    }
+    processChatCommand({ kraftizen: this, username, message: command });
   };
 
-  private greetUser = async (username: string) => {
+  public greetUser = async (username: string) => {
     const player = this.bot.players[username].entity;
 
     if (!player) return;
