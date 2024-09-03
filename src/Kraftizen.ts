@@ -74,18 +74,19 @@ export default class Kraftizen {
   public getMovements = () => this.defaultMove;
 
   private messageOthers = (message: Omit<TeamMessage, 'sender'>) => {
-    this.messenger.messageTeam({ ...message, sender: this });
+    this.messenger.messageTeam({ ...message, sender: this.username });
   };
 
   public onTeamMessage = (message: TeamMessage) => {
+    const sender = this.bot.players[message.sender];
     // ignore far peeps
     const distance = this.bot.entity.position.distanceTo(
-      message.sender.bot.entity.position
+      sender.entity.position
     );
 
     if (distance > this.behaviors.range) return;
 
-    const senderUsername = message.sender.bot.username;
+    const senderUsername = sender.username;
     switch (message.message) {
       case 'help':
         console.debug(senderUsername, 'asked for help from', this.bot.username);

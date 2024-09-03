@@ -3,6 +3,10 @@ import { MAX_WITHDRAW, RANGE_CHEST_OPEN } from '../utils/constants';
 import { Item, KraftizenBot, Position } from '../utils/types';
 import { sleep } from '../utils/utils';
 
+/**
+ * Base set of item categories every bot tries to have
+ * When found it will be "checked off" their pull list.
+ */
 const searchItems = [
   'food',
   'sword',
@@ -17,6 +21,10 @@ const searchItems = [
   'arrow',
 ];
 
+/**
+ * Item types to not deposit
+ * Items in equip will not be deposited regardless
+ */
 const keep = ['food', 'arrow'];
 
 const maxToWithdrawOverrides: Record<string, number> = {
@@ -130,6 +138,12 @@ export const depositItems = async (
 
   await sleep(1000);
   const allItems = getAllHeldItems(kraftizen.bot, false);
+
+  /**
+   * A bot might deposit items they need for their persona. For now let
+   * them re-withdraw, else we would need additional logic to check if their inventory
+   * is completely full of said item e.g. seeds
+   */
   const depositList = allItems.filter(
     (item) =>
       !keep.some(
@@ -159,7 +173,7 @@ export const depositItems = async (
 export const withdrawItems = async (
   kraftizen: Kraftizen,
   position: Position,
-  items?: string[]
+  items: string[] = []
 ) => {
   const nearbyChest = kraftizen.behaviors.findBlock(
     RANGE_CHEST_OPEN,
@@ -177,7 +191,7 @@ export const withdrawItems = async (
   if (!chest) return;
 
   await sleep(1000);
-  const toSearch = new Set(searchItems);
+  const toSearch = new Set([...searchItems, ...items]);
   const allItems = getAllHeldItems(kraftizen.bot);
 
   allItems.forEach((item) => {

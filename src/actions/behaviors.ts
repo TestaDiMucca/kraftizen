@@ -106,8 +106,13 @@ export default class BehaviorsEngine {
         this.bot.sleep(bed).catch((e: Error) => {
           console.error(e.message);
           if (e.message.includes('monsters')) {
+            /**
+             * Attack mobs that prevent sleep. May be issue
+             * if they are inaccessible e.g. in some cave
+             */
             this.attackNearest(undefined, this.range, undefined, true);
           } else if (e.message.includes('not sleeping')) {
+            /** Wake and try again */
             void this.bot.wake().catch(() => {});
           } else {
             if (triesLeft > 0)
