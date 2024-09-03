@@ -136,7 +136,7 @@ export default class BehaviorsEngine {
   ): Promise<boolean> => {
     return new Promise(async (resolve) => {
       try {
-        this.bot.lookAt(new Vec3(position.x, position.y, position.z));
+        this.bot.lookAt(new Vec3(position.x, position.y, position.z), true);
         let timeElapsed = 0;
         const onGoalReached = (gaveUp = false) => {
           if (posTest) clearInterval(posTest);

@@ -112,7 +112,7 @@ const commandHandlers = {
   inventory: handlerFactory(({ behaviors }) => behaviors.listInventory()),
   objective: handlerFactory(({ tasks, sendChat }) => {
     const taskLabel =
-      tasks.currentTask.type === Task.personaTask
+      tasks.currentTask?.type === Task.personaTask
         ? tasks.currentTask.description
         : tasks.currentTask.type;
     sendChat(`My current task is to ${taskLabel ?? 'idle'}`);
@@ -135,7 +135,10 @@ const commandHandlers = {
     behaviors.attackMode = 'melee';
     sendChat(ChatKeys.melee);
   }),
-  sleep: handlerFactory(({ behaviors }) => behaviors.goSleep()),
+  sleep: handlerFactory(({ behaviors, tasks }) => {
+    tasks.dropAllTasks();
+    behaviors.goSleep();
+  }),
   wake: handlerFactory(({ kraftizen }) => kraftizen.bot.wake()),
   withdraw: handlerFactory(({ addTask }) =>
     addTask({ type: Task.findBlock, withdraw: true, multiple: true })

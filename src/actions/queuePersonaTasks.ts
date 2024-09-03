@@ -17,6 +17,12 @@ import {
  * Queue tasks according to persona
  */
 export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
+  if (kraftizen.listening) {
+    /** Listening mode has a very limited task scope */
+    processDecisionModules(kraftizen, [allDecisionModules.trySleeping]);
+    return;
+  }
+
   switch (kraftizen.persona) {
     case Persona.follower:
       kraftizen.addTask({

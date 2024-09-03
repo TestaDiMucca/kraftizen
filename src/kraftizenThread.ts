@@ -73,6 +73,7 @@ process.on('message', (message: ProcessMessage) => {
 });
 
 process.on('uncaughtException', (e) => {
+  console.error(e);
   process.send({ type: 'error', error: e.message });
   process.exit(1);
 });
