@@ -16,6 +16,7 @@ export enum ChatKeys {
   findBed = 'findBed',
   ok = 'ok',
   respawn = 'respawn',
+  wait = 'wait',
 }
 
 export const DEFAULT_LINES: Record<ChatKeys, string | string[]> = {
@@ -64,4 +65,5 @@ export const DEFAULT_LINES: Record<ChatKeys, string | string[]> = {
   [ChatKeys.findBed]: 'Should I look for a bed around here?',
   [ChatKeys.ok]: 'Okay',
   [ChatKeys.respawn]: 'I messed up.',
+  [ChatKeys.wait]: 'I will stay put until my next command.',
 };

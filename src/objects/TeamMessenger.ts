@@ -19,9 +19,7 @@ export default class TeamMessenger {
   public onTeamMessage = (message: TeamMessage) => {
     setImmediate(() => {
       Object.values(this.teamMembers)
-        .filter(
-          (kraftizen) => kraftizen.bot.username !== message.sender.bot.username
-        )
+        .filter((kraftizen) => kraftizen.bot.username !== message.sender)
         .forEach((kraftizen) => {
           kraftizen.onTeamMessage(message);
         });
@@ -50,6 +48,6 @@ export default class TeamMessenger {
 }
 
 export type TeamMessage = {
-  sender: Kraftizen;
+  sender: string;
   message: string;
 };

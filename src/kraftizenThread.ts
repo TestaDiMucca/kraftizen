@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 
 import Kraftizen from './Kraftizen';
-import TeamMessenger from './utils/TeamMessenger';
+import TeamMessenger from './objects/TeamMessenger';
 import {
   AuthTypes,
   KraftizenConfiguration,
@@ -10,7 +10,7 @@ import {
 } from './utils/utils.types';
 import { performTask } from './actions/performTask';
 import { botManagerEvents, EventTypes } from './utils/events';
-import { BackoffController } from './utils/BackoffController';
+import { BackoffController } from './objects/BackoffController';
 import { onShutdown, slugify } from './utils/utils';
 import { readYamlConfig, saveYamlConfig } from './utils/yamlHelpers';
 
@@ -73,6 +73,7 @@ process.on('message', (message: ProcessMessage) => {
 });
 
 process.on('uncaughtException', (e) => {
+  console.error(e);
   process.send({ type: 'error', error: e.message });
   process.exit(1);
 });

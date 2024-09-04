@@ -34,7 +34,7 @@ export const logPrimitives = (...args: any[]): void => {
     } else if (typeof arg === 'object' && arg !== null) {
       const filteredObject = {};
       for (const [key, value] of Object.entries(arg)) {
-        if (value !== Object(value)) {
+        if (value !== Object(value) && !!value) {
           filteredObject[key] = value;
         }
       }

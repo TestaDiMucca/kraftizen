@@ -43,6 +43,7 @@ export enum RateLimiterKeys {
   unarmedGuard = 'unarmedGuard',
   findBed = 'findBed',
   demandHelp = 'demandHelp',
+  findSeeds = 'findSeeds',
 }
 
 /** Global limiter */
@@ -61,6 +62,11 @@ export const getRateLimiter = () => {
   rateLimiter.setLimitForKey('checkChests', {
     max: 1,
     windowMs: 1000 * 60 * 5,
+  });
+
+  rateLimiter.setLimitForKey(RateLimiterKeys.findSeeds, {
+    max: 1,
+    windowMs: 1000 * 60 * 10,
   });
 
   rateLimiter.setLimitForKey('unarmedGuard', {

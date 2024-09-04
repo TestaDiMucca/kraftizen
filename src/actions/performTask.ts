@@ -68,7 +68,7 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
   const { type } = task;
   const { behaviors, bot } = kraftizen;
 
-  logPrimitives(bot.username, 'starting task', task);
+  logPrimitives(`[${bot.username}]`, 'starting task', task);
   try {
     switch (type) {
       case Task.come:
@@ -175,6 +175,6 @@ export const performTask = async (task: TaskPayload, kraftizen: Kraftizen) => {
   } catch (e) {
   } finally {
     kraftizen.tasks.finishCurrentTask();
-    console.debug(bot.username, 'finishing task', task.type);
+    console.debug(`[${bot.username}]`, 'finishing task', task.type);
   }
 };

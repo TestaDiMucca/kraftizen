@@ -1,6 +1,6 @@
 import { Vec3 } from 'vec3';
 import { personaReturnsHome } from '../utils/bot.utils';
-import { RateLimiterKeys } from '../utils/RateLimiter';
+import { RateLimiterKeys } from '../objects/RateLimiter';
 import { getRandomIntInclusive, randomFromArray } from '../utils/utils';
 import { DecisionModule, DecisionModuleFactory } from './decisionModules.util';
 import { getItemInInventory } from './itemActions';
@@ -185,10 +185,11 @@ export const sowField: DecisionModule = {
 
     const wheatSeeds = getItemInInventory(kraftizen.bot, 'wheat_seeds');
 
-    if (!wheatSeeds) {
+    if (!wheatSeeds && kraftizen.rateLimiter.tryCall('findSeeds')) {
       kraftizen.addTask({
         type: Task.findBlock,
         withdraw: ['wheat_seeds'],
+        multiple: true,
       });
       return false;
     }
@@ -215,14 +216,18 @@ export const sowField: DecisionModule = {
     return false;
   },
   action: async ({ kraftizen, targetBlock, targetItem }) => {
-    if (!targetBlock) return;
+    if (!targetBlock || !targetItem) return;
 
     if (kraftizen.bot.entity.position.distanceTo(targetBlock.position) > 5) {
       await kraftizen.behaviors.toCoordinate(targetBlock.position, 0, 2);
     }
 
     if (targetItem) await kraftizen.bot.equip(targetItem, 'hand');
-    await kraftizen.bot.placeBlock(targetBlock, new Vec3(0, 1, 0));
+    try {
+      await kraftizen.bot.placeBlock(targetBlock, new Vec3(0, 1, 0));
+    } catch (e) {
+      console.log('placeBlock error', e.message);
+    }
   },
 };
 

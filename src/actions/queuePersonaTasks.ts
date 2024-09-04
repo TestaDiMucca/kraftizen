@@ -5,7 +5,7 @@ import Kraftizen from '../Kraftizen';
 import { Persona } from '../utils/types';
 import { Task } from './performTask';
 import { hasWeapon } from './itemActions';
-import { RateLimiterKeys } from '../utils/RateLimiter';
+import { RateLimiterKeys } from '../objects/RateLimiter';
 import { processDecisionModules } from './decisionModules.util';
 import {
   allDecisionModules,
@@ -17,6 +17,12 @@ import {
  * Queue tasks according to persona
  */
 export const queuePersonaTasks = async (kraftizen: Kraftizen) => {
+  if (kraftizen.listening) {
+    /** Listening mode has a very limited task scope */
+    processDecisionModules(kraftizen, [allDecisionModules.trySleeping]);
+    return;
+  }
+
   switch (kraftizen.persona) {
     case Persona.follower:
       kraftizen.addTask({
