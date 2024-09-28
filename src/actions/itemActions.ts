@@ -77,16 +77,18 @@ export const equipRanged = async (bot: KraftizenBot) => {
   return matches[0].name;
 };
 
+/**
+ * Only intended for tools with different materials/tiers.
+ */
 export const equipBestToolOfType = (bot: KraftizenBot, toolTypes: string[]) => {
   const tools = toolTypes.flatMap((toolType) =>
     equipTiers.map((x) => x + '_' + toolType)
   );
 
   let equipped: Item | null = null;
-  for (let i = tools.length - 1; i >= 0; i--) {
+  for (let i = 0; i < tools.length; i++) {
     const tool = tools[i];
 
-    // TODO: this will equip first match, not best tool.
     let matches = bot.inventory.items().filter((item) => item.name === tool);
     if (matches.length > 0) {
       bot.equip(matches[0], 'hand');
